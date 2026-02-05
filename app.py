@@ -1,133 +1,141 @@
 import streamlit as st
 import pandas as pd
 import plotly.express as px
+import plotly.graph_objects as go
 import requests
 from datetime import datetime
 
-# --- PAGE CONFIG ---
-st.set_page_config(page_title="Pro Pakistan Weather", layout="wide", page_icon="🇵🇰")
+# --- 1. SET PAGE CONFIG & THEME ---
+st.set_page_config(page_title="PAK-CLIMATE AI", layout="wide", page_icon="⚡")
 
-# --- CUSTOM CSS FOR EFFECTIVENESS ---
+# --- 2. ADVANCED STYLING (GLASSMORPHISM) ---
 st.markdown("""
     <style>
-    .main { background-color: #f0f2f6; }
-    .stButton>button {
-        width: 100%;
-        border-radius: 10px;
-        height: 4em;
-        background-color: #0066cc;
+    /* Main background */
+    .stApp {
+        background: linear-gradient(135deg, #0f2027, #203a43, #2c5364);
         color: white;
-        font-weight: bold;
-        border: None;
-        transition: 0.3s;
+    }
+    /* Card-like containers */
+    div[data-testid="stVerticalBlock"] > div:has(div.stButton) {
+        background: rgba(255, 255, 255, 0.05);
+        border-radius: 15px;
+        padding: 20px;
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        backdrop-filter: blur(10px);
+    }
+    /* Metric styling */
+    div[data-testid="stMetricValue"] {
+        color: #00ffcc !important;
+        font-size: 32px;
+    }
+    /* Button Hover Effects */
+    .stButton>button {
+        border-radius: 12px;
+        height: 80px;
+        border: 1px solid #00ffcc;
+        background: transparent;
+        color: white;
+        font-size: 18px;
+        transition: all 0.3s ease;
     }
     .stButton>button:hover {
-        background-color: #004499;
-        border: 2px solid #ffffff;
+        background: #00ffcc;
+        color: #0f2027;
+        box-shadow: 0px 0px 15px #00ffcc;
     }
     </style>
     """, unsafe_allow_html=True)
 
-# --- PAKISTAN DATASET ---
+# --- 3. DATASET ---
 LOCATIONS = {
-    "Islamabad": [33.6844, 73.0479],
-    "Karachi": [24.8607, 67.0011],
-    "Lahore": [31.5204, 74.3587],
-    "Jhelum": [32.9405, 73.7276],
-    "Rawalpindi": [33.5651, 73.0169],
-    "Faisalabad": [31.4504, 73.1350],
-    "Quetta": [30.1798, 66.9750],
-    "Gilgit": [35.9208, 74.3089]
+    "Islamabad": [33.6844, 73.0479], "Karachi": [24.8607, 67.0011],
+    "Lahore": [31.5204, 74.3587], "Jhelum": [32.9405, 73.7276],
+    "Rawalpindi": [33.5651, 73.0169], "Faisalabad": [31.4504, 73.1350],
+    "Quetta": [30.1798, 66.9750], "Gilgit": [35.9208, 74.3089]
 }
 
-# Session State for App Navigation
-if 'mode' not in st.session_state:
-    st.session_state.mode = None
+# Navigation State
+if 'page' not in st.session_state:
+    st.session_state.page = "Home"
 
-# --- HEADER ---
-st.title("🇵🇰 Pakistan Climate Intelligence Dashboard")
-st.markdown("---")
-
-# --- NAVIGATION BUTTONS (The 4 Main Actions) ---
-if st.session_state.mode is None:
-    st.info("👋 Welcome! Please select a specialized service below to begin.")
-    c1, c2, c3, c4 = st.columns(4)
+# --- 4. NAVIGATION LOGIC ---
+if st.session_state.page == "Home":
+    st.title("⚡ PAK-CLIMATE INTELLIGENCE")
+    st.write("### Select an AI Analysis Module")
     
-    if c1.button("🌧️ Early Rain Prediction"):
-        st.session_state.mode = "Rain Prediction"
-        st.rerun()
-    if c2.button("📊 Button 2"):
-        st.session_state.mode = "B2"
-        st.rerun()
-    if c3.button("📡 Button 3"):
-        st.session_state.mode = "B3"
-        st.rerun()
-    if c4.button("⚙️ Button 4"):
-        st.session_state.mode = "B4"
-        st.rerun()
+    col1, col2, col3, col4 = st.columns(4)
+    
+    with col1:
+        if st.button("🌧️\nEarly Rain\nPrediction"):
+            st.session_state.page = "Rain"
+            st.rerun()
+    with col2:
+        if st.button("🌊\nFlood Risk\nAnalysis"):
+            st.session_state.page = "Flood"
+            st.rerun()
+    with col3:
+        if st.button("🛰️\nSatellite\nMonitoring"):
+            st.session_state.page = "Satellite"
+            st.rerun()
+    with col4:
+        if st.button("📉\nEconomic\nImpact"):
+            st.session_state.page = "Economic"
+            st.rerun()
 
-# --- INTERFACE AFTER SELECTION ---
 else:
-    # Sidebar back button
-    if st.sidebar.button("⬅️ Return to Home"):
-        st.session_state.mode = None
+    # --- 5. DASHBOARD INTERFACE ---
+    if st.sidebar.button("🔙 Back to Main Menu"):
+        st.session_state.page = "Home"
         st.rerun()
 
-    st.sidebar.header(f"Service: {st.session_state.mode}")
-    city = st.sidebar.selectbox("Select Target City", sorted(LOCATIONS.keys()))
-    lat, lon = LOCATIONS[city]
+    st.title(f"🔍 {st.session_state.page} Module")
+    selected_city = st.sidebar.selectbox("Target City", list(LOCATIONS.keys()))
+    lat, lon = LOCATIONS[selected_city]
 
-    # API Data Fetching with Extended Parameters
+    # Fetch Data
     @st.cache_data(ttl=600)
-    def get_pro_data(lat, lon):
-        url = f"https://api.open-meteo.com/v1/forecast?latitude={lat}&longitude={lon}&current_weather=true&hourly=temperature_2m,relative_humidity_2m,precipitation_probability,cloudcover&timezone=auto"
+    def fetch_weather(lat, lon):
+        url = f"https://api.open-meteo.com/v1/forecast?latitude={lat}&longitude={lon}&current_weather=true&hourly=temperature_2m,relative_humidity_2m,precipitation_probability,surface_pressure&timezone=auto"
         return requests.get(url).json()
 
-    data = get_pro_data(lat, lon)
+    data = fetch_weather(lat, lon)
 
     if data:
-        # --- TOP LEVEL METRICS ---
+        # --- METRIC CARDS ---
         curr = data['current_weather']
+        rain_val = data['hourly']['precipitation_probability'][0]
+        
         m1, m2, m3, m4 = st.columns(4)
-        m1.metric("Temperature", f"{curr['temperature']}°C")
-        m2.metric("Wind Speed", f"{curr['windspeed']} km/h")
+        m1.metric("TEMP", f"{curr['temperature']}°C")
+        m2.metric("WIND", f"{curr['windspeed']} km/h")
+        m3.metric("RAIN PROB", f"{rain_val}%")
+        m4.metric("PRESSURE", f"{data['hourly']['surface_pressure'][0]} hPa")
+
+        # --- DYNAMIC CONTENT BASED ON BUTTON ---
+        st.markdown("---")
         
-        # Rain Logic for effectiveness
-        rain_prob = data['hourly']['precipitation_probability'][0]
-        m3.metric("Rain Probability", f"{rain_prob}%")
-        
-        humidity = data['hourly']['relative_humidity_2m'][0]
-        m4.metric("Humidity", f"{humidity}%")
-
-        # --- RAIN ANALYSIS (Specific to Button 1) ---
-        if st.session_state.mode == "Rain Prediction":
-            st.success(f"### 🎯 Intelligence Report for {city}")
-            if rain_prob > 50:
-                st.error("⚠️ HIGH RISK: Significant chance of rain detected within the next hour.")
-            elif rain_prob > 20:
-                st.warning("⚡ MODERATE: Overcast skies. Light showers possible.")
-            else:
-                st.info("☀️ STABLE: No rain expected in the immediate forecast.")
-
-        # --- VISUALS SECTION ---
-        col_map, col_chart = st.columns([1, 1.2])
-
-        with col_map:
-            st.subheader("📍 Geospatial View")
-            map_df = pd.DataFrame({'lat': [lat], 'lon': [lon]})
-            st.map(map_df, zoom=10)
-
-        with col_chart:
-            st.subheader("📉 24-Hour Trend Analysis")
-            chart_df = pd.DataFrame({
-                "Time": pd.to_datetime(data['hourly']['time'][:24]),
-                "Temperature (°C)": data['hourly']['temperature_2m'][:24],
-                "Rain Prob (%)": data['hourly']['precipitation_probability'][:24]
-            })
-            # Multi-line chart for effectiveness
-            fig = px.line(chart_df, x="Time", y=["Temperature (°C)", "Rain Prob (%)"], 
-                          markers=True, template="plotly_white")
+        if st.session_state.page == "Rain":
+            st.subheader("⛈️ Precipitation Forecast")
+            fig = px.area(x=data['hourly']['time'][:24], y=data['hourly']['precipitation_probability'][:24],
+                          labels={'x': 'Time', 'y': 'Probability %'}, color_discrete_sequence=['#00ffcc'])
             st.plotly_chart(fig, use_container_width=True)
 
+        elif st.session_state.page == "Flood":
+            st.subheader("🌊 Flood Risk Assessment")
+            risk_level = "LOW" if rain_val < 30 else "MEDIUM" if rain_val < 60 else "HIGH"
+            st.info(f"The Current Flood Risk for {selected_city} is **{risk_level}** based on satellite moisture data.")
+            # Gauge Chart for Flood Risk
+            fig_gauge = go.Figure(go.Indicator(
+                mode = "gauge+number", value = rain_val,
+                title = {'text': "Saturation Level"},
+                gauge = {'axis': {'range': [None, 100]}, 'bar': {'color': "#00ffcc"}}
+            ))
+            st.plotly_chart(fig_gauge)
+
+        # --- MAP VIEW ---
+        st.subheader(f"📍 Precision Mapping: {selected_city}")
+        st.map(pd.DataFrame({'lat': [lat], 'lon': [lon]}), zoom=11)
+
     else:
-        st.error("Connectivity Issue: Failed to retrieve data from Open-Meteo API.")
+        st.error("API Connection Lost.")

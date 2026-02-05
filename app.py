@@ -5,21 +5,21 @@ import requests
 from datetime import datetime
 
 # Page Configuration
-st.set_page_config(page_title="AU Weather Monitor", layout="wide")
+st.set_page_config(page_title="PAKISTAN Weather Monitor", layout="wide")
 
 # Correct Location Data (Sample of your 48 locations)
 LOCATIONS = {
-    "Sydney": [-33.8688, 151.2093],
-    "Melbourne Airport": [-37.6690, 144.8410],
-    "Brisbane": [-27.4698, 153.0251],
-    "Perth": [-31.9505, 115.8605],
-    "Adelaide": [-34.9285, 138.6007],
-    "Uluru": [-25.3444, 131.0369],
-    "Alice Springs": [-23.6980, 133.8807],
-    "Darwin": [-12.4634, 130.8456]
+    "Islamabad": [-33.8688, 151.2093],
+    "Karachi": [-37.6690, 144.8410],
+    "Lahore": [-27.4698, 153.0251],
+    "Jehlum": [-31.9505, 115.8605],
+    "Rawal pindi": [-34.9285, 138.6007],
+    "Faisalabad": [-25.3444, 131.0369],
+    "Balochistan": [-23.6980, 133.8807],
+    "Gilgit": [-12.4634, 130.8456]
 }
 
-st.title("📍 Australia Regional Weather Dashboard")
+st.title("📍PAKISTAN Weather Dashboard")
 
 # Sidebar
 selected_city = st.sidebar.selectbox("Select a Location", sorted(LOCATIONS.keys()))

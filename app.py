@@ -2,60 +2,88 @@ import streamlit as st
 import pandas as pd
 import plotly.express as px
 import requests
-from datetime import datetime
 
 # Page Configuration
 st.set_page_config(page_title="PAKISTAN Weather Monitor", layout="wide")
 
-# Correct Location Data (Sample of your 48 locations)
+# 1. Dataset changed from Australia to Pakistan
+# 2. Locations updated with Pakistan cities and their correct coordinates
 LOCATIONS = {
-    "Islamabad": [-33.8688, 151.2093],
-    "Karachi": [-37.6690, 144.8410],
-    "Lahore": [-27.4698, 153.0251],
-    "Jehlum": [-31.9505, 115.8605],
-    "Rawal pindi": [-34.9285, 138.6007],
-    "Faisalabad": [-25.3444, 131.0369],
-    "Balochistan": [-23.6980, 133.8807],
-    "Gilgit": [-12.4634, 130.8456]
+    "Islamabad": [33.6844, 73.0479],
+    "Karachi": [24.8607, 67.0011],
+    "Lahore": [31.5204, 74.3587],
+    "Jhelum": [32.9405, 73.7276],
+    "Rawalpindi": [33.5651, 73.0169],
+    "Faisalabad": [31.4504, 73.1350],
+    "Quetta": [30.1798, 66.9750],
+    "Gilgit": [35.9208, 74.3089]
 }
 
-st.title("📍PAKISTAN Weather Dashboard")
+# Session state to keep track of button clicks
+if 'show_interface' not in st.session_state:
+    st.session_state.show_interface = False
 
-# Sidebar
-selected_city = st.sidebar.selectbox("Select a Location", sorted(LOCATIONS.keys()))
-lat, lon = LOCATIONS[selected_city]
+st.title("📍 PAKISTAN Weather Dashboard")
 
-# Fetch Data with Error Handling
-@st.cache_data(ttl=600)
-def get_weather_data(lat, lon):
-    try:
-        url = f"https://api.open-meteo.com/v1/forecast?latitude={lat}&longitude={lon}&current_weather=true&hourly=temperature_2m"
-        response = requests.get(url)
-        return response.json()
-    except Exception as e:
-        return None
+# 3, 4, 5. Creating 4 buttons initially
+st.subheader("Select a Service")
+col1, col2, col3, col4 = st.columns(4)
 
-data = get_weather_data(lat, lon)
+with col1:
+    if st.button("Early Rain Prediction", use_container_width=True):
+        st.session_state.show_interface = True
+with col2:
+    if st.button("Button 2", use_container_width=True):
+        st.session_state.show_interface = True
+with col3:
+    if st.button("Button 3", use_container_width=True):
+        st.session_state.show_interface = True
+with col4:
+    if st.button("Button 4", use_container_width=True):
+        st.session_state.show_interface = True
 
-if data and 'current_weather' in data:
-    # Display Metrics
-    curr = data['current_weather']
-    col1, col2 = st.columns(2)
-    col1.metric("Current Temp", f"{curr['temperature']}°C")
-    col2.metric("Wind Speed", f"{curr['windspeed']} km/h")
+# 6. Show interface only when a button is clicked
+if st.session_state.show_interface:
+    st.divider()
+    
+    # Sidebar for city selection
+    selected_city = st.sidebar.selectbox("Select a Location", sorted(LOCATIONS.keys()))
+    lat, lon = LOCATIONS[selected_city]
 
-    # Interactive Map
-    st.subheader(f"Location Map: {selected_city}")
-    map_data = pd.DataFrame({'lat': [lat], 'lon': [lon]})
-    st.map(map_data)
+    # Fetch Data
+    @st.cache_data(ttl=600)
+    def get_weather_data(lat, lon):
+        try:
+            url = f"https://api.open-meteo.com/v1/forecast?latitude={lat}&longitude={lon}&current_weather=true&hourly=temperature_2m"
+            response = requests.get(url)
+            return response.json()
+        except Exception:
+            return None
 
-    # Hourly Chart
-    st.subheader("24-Hour Temperature Forecast")
-    hourly_df = pd.DataFrame({
-        "Time": pd.to_datetime(data['hourly']['time'][:24]),
-        "Temp (°C)": data['hourly']['temperature_2m'][:24]
-    })
-    fig = px.line(hourly_df, x="Time", y="Temp (°C)", markers=True)
-    st.plotly_chart(fig, use_container_width=True)
-else:
-    st.error("Weather data fetch karne mein masla aa raha hai. Internet check karein.")
+    data = get_weather_data(lat, lon)
+
+    if data and 'current_weather' in data:
+        curr = data['current_weather']
+        m1, m2 = st.columns(2)
+        m1.metric("Current Temp", f"{curr['temperature']}°C")
+        m2.metric("Wind Speed", f"{curr['windspeed']} km/h")
+
+        # Map Interface
+        st.subheader(f"Location Map: {selected_city}")
+        map_data = pd.DataFrame({'lat': [lat], 'lon': [lon]})
+        st.map(map_data)
+
+        # Graph
+        st.subheader("24-Hour Forecast")
+        hourly_df = pd.DataFrame({
+            "Time": pd.to_datetime(data['hourly']['time'][:24]),
+            "Temp (°C)": data['hourly']['temperature_2m'][:24]
+        })
+        st.plotly_chart(px.line(hourly_df, x="Time", y="Temp (°C)", markers=True), use_container_width=True)
+    else:
+        st.error("Data fetch nahi ho raha. Internet check karein.")
+
+    # Reset button to go back to the 4 buttons menu
+    if st.sidebar.button("Back to Menu"):
+        st.session_state.show_interface = False
+        st.rerun()

@@ -2,34 +2,60 @@ import streamlit as st
 import pandas as pd
 import plotly.express as px
 import requests
+from datetime import datetime
 
-st.set_page_config(page_title="AU Regional Monitor", layout="wide")
+# Page Configuration
+st.set_page_config(page_title="AU Weather Monitor", layout="wide")
 
-# Data for 48 locations
+# Correct Location Data (Sample of your 48 locations)
 LOCATIONS = {
-    "Sydney": [-33.86, 151.20], "Melbourne Airport": [-37.66, 144.84], "Brisbane": [-27.46, 153.02],
-    "Perth": [-31.95, 115.86], "Adelaide": [-34.92, 138.60], "Hobart": [-42.88, 147.32],
-    "Darwin": [-12.46, 130.84], "Canberra": [-35.28, 149.13], "Uluru": [-25.34, 131.03],
-    "Alice Springs": [-23.69, 133.88], "Newcastle": [-32.92, 151.78], "Gold Coast": [-28.01, 153.40],
-    "Cairns": [-16.91, 145.77], "Townsville": [-19.25, 146.81], "Wollongong": [-34.42, 150.89],
-    "Albury": [-36.07, 146.91], "Wagga Wagga": [-35.10, 147.35], "Mildura": [-34.20, 142.12],
-    "Bendigo": [-36.75, 144.27], "Ballarat": [-37.56, 143.85], "Woomera": [-31.19, 136.83],
-    "Albany": [-35.02, 117.88], "Norfolk Island": [-29.04, 167.95], "Cobar": [-31.49, 145.83]
-    # ... (Add remaining coordinates from previous list)
+    "Sydney": [-33.8688, 151.2093],
+    "Melbourne Airport": [-37.6690, 144.8410],
+    "Brisbane": [-27.4698, 153.0251],
+    "Perth": [-31.9505, 115.8605],
+    "Adelaide": [-34.9285, 138.6007],
+    "Uluru": [-25.3444, 131.0369],
+    "Alice Springs": [-23.6980, 133.8807],
+    "Darwin": [-12.4634, 130.8456]
 }
 
-st.title("🇦🇺 Australia Regional Dashboard")
-city = st.sidebar.selectbox("Select Location", sorted(LOCATIONS.keys()))
-lat, lon = LOCATIONS[city]
+st.title("📍 Australia Regional Weather Dashboard")
 
+# Sidebar
+selected_city = st.sidebar.selectbox("Select a Location", sorted(LOCATIONS.keys()))
+lat, lon = LOCATIONS[selected_city]
+
+# Fetch Data with Error Handling
 @st.cache_data(ttl=600)
-def get_data(lat, lon):
-    url = f"https://api.open-meteo.com/v1/forecast?latitude={lat}&longitude={lon}&current_weather=true&hourly=temperature_2m"
-    return requests.get(url).json()
+def get_weather_data(lat, lon):
+    try:
+        url = f"https://api.open-meteo.com/v1/forecast?latitude={lat}&longitude={lon}&current_weather=true&hourly=temperature_2m"
+        response = requests.get(url)
+        return response.json()
+    except Exception as e:
+        return None
 
-res = get_data(lat, lon)
-st.metric("Current Temperature", f"{res['current_weather']['temperature']}°C")
+data = get_weather_data(lat, lon)
 
-df = pd.DataFrame({"Time": res['hourly']['time'][:24], "Temp": res['hourly']['temperature_2m'][:24]})
-st.plotly_chart(px.line(df, x="Time", y="Temp", title=f"24h Trend for {city}"))
-st.map(pd.DataFrame([{"lat": lat, "lon": lon}]))
+if data and 'current_weather' in data:
+    # Display Metrics
+    curr = data['current_weather']
+    col1, col2 = st.columns(2)
+    col1.metric("Current Temp", f"{curr['temperature']}°C")
+    col2.metric("Wind Speed", f"{curr['windspeed']} km/h")
+
+    # Interactive Map
+    st.subheader(f"Location Map: {selected_city}")
+    map_data = pd.DataFrame({'lat': [lat], 'lon': [lon]})
+    st.map(map_data)
+
+    # Hourly Chart
+    st.subheader("24-Hour Temperature Forecast")
+    hourly_df = pd.DataFrame({
+        "Time": pd.to_datetime(data['hourly']['time'][:24]),
+        "Temp (°C)": data['hourly']['temperature_2m'][:24]
+    })
+    fig = px.line(hourly_df, x="Time", y="Temp (°C)", markers=True)
+    st.plotly_chart(fig, use_container_width=True)
+else:
+    st.error("Weather data fetch karne mein masla aa raha hai. Internet check karein.")

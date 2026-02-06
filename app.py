@@ -1,141 +1,97 @@
-import streamlit as st
 import pandas as pd
-import plotly.express as px
-import plotly.graph_objects as go
-import requests
-from datetime import datetime
+import numpy as np
+from sklearn.model_selection import train_test_split
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.impute import SimpleImputer
+from sklearn.preprocessing import LabelEncoder
 
-# --- 1. SET PAGE CONFIG & THEME ---
-st.set_page_config(page_title="PAK-CLIMATE AI", layout="wide", page_icon="⚡")
+# 1. LOAD AND PREPARE DATA
+df = pd.read_csv('weatherAUS.csv')
 
-# --- 2. ADVANCED STYLING (GLASSMORPHISM) ---
-st.markdown("""
-    <style>
-    /* Main background */
-    .stApp {
-        background: linear-gradient(135deg, #0f2027, #203a43, #2c5364);
-        color: white;
-    }
-    /* Card-like containers */
-    div[data-testid="stVerticalBlock"] > div:has(div.stButton) {
-        background: rgba(255, 255, 255, 0.05);
-        border-radius: 15px;
-        padding: 20px;
-        border: 1px solid rgba(255, 255, 255, 0.1);
-        backdrop-filter: blur(10px);
-    }
-    /* Metric styling */
-    div[data-testid="stMetricValue"] {
-        color: #00ffcc !important;
-        font-size: 32px;
-    }
-    /* Button Hover Effects */
-    .stButton>button {
-        border-radius: 12px;
-        height: 80px;
-        border: 1px solid #00ffcc;
-        background: transparent;
-        color: white;
-        font-size: 18px;
-        transition: all 0.3s ease;
-    }
-    .stButton>button:hover {
-        background: #00ffcc;
-        color: #0f2027;
-        box-shadow: 0px 0px 15px #00ffcc;
-    }
-    </style>
-    """, unsafe_allow_html=True)
+# Use only the columns you requested
+cols = ['Date', 'Location', 'Rainfall', 'Humidity9am', 'Humidity3pm',
+        'Pressure9am', 'Pressure3pm', 'Cloud9am', 'Cloud3pm', 'RainTomorrow']
+df = df[cols]
 
-# --- 3. DATASET ---
-LOCATIONS = {
-    "Islamabad": [33.6844, 73.0479], "Karachi": [24.8607, 67.0011],
-    "Lahore": [31.5204, 74.3587], "Jhelum": [32.9405, 73.7276],
-    "Rawalpindi": [33.5651, 73.0169], "Faisalabad": [31.4504, 73.1350],
-    "Quetta": [30.1798, 66.9750], "Gilgit": [35.9208, 74.3089]
-}
+# 2. DERIVE AWI (Antecedent Wetness Index)
+df['Date'] = pd.to_datetime(df['Date'])
+df = df.sort_values(['Location', 'Date'])
+df['Rainfall_Clean'] = df['Rainfall'].fillna(0)
+df['AWI'] = df.groupby('Location')['Rainfall_Clean'].transform(lambda x: x.rolling(window=7, min_periods=1).sum())
 
-# Navigation State
-if 'page' not in st.session_state:
-    st.session_state.page = "Home"
+# 3. PREPARE FOR MODEL TRAINING
+df = df.dropna(subset=['RainTomorrow'])
+df['Target'] = df['RainTomorrow'].map({'No': 0, 'Yes': 1})
 
-# --- 4. NAVIGATION LOGIC ---
-if st.session_state.page == "Home":
-    st.title("⚡ PAK-CLIMATE INTELLIGENCE")
-    st.write("### Select an AI Analysis Module")
-    
-    col1, col2, col3, col4 = st.columns(4)
-    
-    with col1:
-        if st.button("🌧️\nEarly Rain\nPrediction"):
-            st.session_state.page = "Rain"
-            st.rerun()
-    with col2:
-        if st.button("🌊\nFlood Risk\nAnalysis"):
-            st.session_state.page = "Flood"
-            st.rerun()
-    with col3:
-        if st.button("🛰️\nSatellite\nMonitoring"):
-            st.session_state.page = "Satellite"
-            st.rerun()
-    with col4:
-        if st.button("📉\nEconomic\nImpact"):
-            st.session_state.page = "Economic"
-            st.rerun()
+# Encode Location names to numbers
+le = LabelEncoder()
+df['Loc_Enc'] = le.fit_transform(df['Location'])
 
-else:
-    # --- 5. DASHBOARD INTERFACE ---
-    if st.sidebar.button("🔙 Back to Main Menu"):
-        st.session_state.page = "Home"
-        st.rerun()
+# Features list
+features_list = ['Rainfall_Clean', 'Humidity9am', 'Humidity3pm', 'Pressure9am',
+                 'Pressure3pm', 'Cloud9am', 'Cloud3pm', 'AWI', 'Loc_Enc']
+X = df[features_list]
+y = df['Target']
 
-    st.title(f"🔍 {st.session_state.page} Module")
-    selected_city = st.sidebar.selectbox("Target City", list(LOCATIONS.keys()))
-    lat, lon = LOCATIONS[selected_city]
+# Handle missing data
+imputer = SimpleImputer(strategy='median')
+X_imputed = imputer.fit_transform(X)
 
-    # Fetch Data
-    @st.cache_data(ttl=600)
-    def fetch_weather(lat, lon):
-        url = f"https://api.open-meteo.com/v1/forecast?latitude={lat}&longitude={lon}&current_weather=true&hourly=temperature_2m,relative_humidity_2m,precipitation_probability,surface_pressure&timezone=auto"
-        return requests.get(url).json()
+# 4. SPLIT DATA (80% Train, 20% Test)
+X_train, X_test, y_train, y_test = train_test_split(X_imputed, y, test_size=0.2, random_state=42)
 
-    data = fetch_weather(lat, lon)
+# 5. TRAIN MODEL
+print("Training model... please wait.")
+model = RandomForestClassifier(n_estimators=100, random_state=42)
+model.fit(X_train, y_train)
+print("Model trained successfully on 80% of the data.\n")
 
-    if data:
-        # --- METRIC CARDS ---
-        curr = data['current_weather']
-        rain_val = data['hourly']['precipitation_probability'][0]
-        
-        m1, m2, m3, m4 = st.columns(4)
-        m1.metric("TEMP", f"{curr['temperature']}°C")
-        m2.metric("WIND", f"{curr['windspeed']} km/h")
-        m3.metric("RAIN PROB", f"{rain_val}%")
-        m4.metric("PRESSURE", f"{data['hourly']['surface_pressure'][0]} hPa")
+# 6. INTERACTIVE INPUT SECTION
+print("--- FLOOD DETECTION SYSTEM: MANUAL INPUT ---")
 
-        # --- DYNAMIC CONTENT BASED ON BUTTON ---
-        st.markdown("---")
-        
-        if st.session_state.page == "Rain":
-            st.subheader("⛈️ Precipitation Forecast")
-            fig = px.area(x=data['hourly']['time'][:24], y=data['hourly']['precipitation_probability'][:24],
-                          labels={'x': 'Time', 'y': 'Probability %'}, color_discrete_sequence=['#00ffcc'])
-            st.plotly_chart(fig, use_container_width=True)
+def get_manual_input():
+    try:
+        loc_name = input(f"Enter Location (e.g., Albury, Darwin, Sydney): ")
+        # Handle location encoding
+        if loc_name in le.classes_:
+            loc_enc = le.transform([loc_name])[0]
+        else:
+            print(f"Location not recognized. Using default encoding.")
+            loc_enc = 0
 
-        elif st.session_state.page == "Flood":
-            st.subheader("🌊 Flood Risk Assessment")
-            risk_level = "LOW" if rain_val < 30 else "MEDIUM" if rain_val < 60 else "HIGH"
-            st.info(f"The Current Flood Risk for {selected_city} is **{risk_level}** based on satellite moisture data.")
-            # Gauge Chart for Flood Risk
-            fig_gauge = go.Figure(go.Indicator(
-                mode = "gauge+number", value = rain_val,
-                title = {'text': "Saturation Level"},
-                gauge = {'axis': {'range': [None, 100]}, 'bar': {'color': "#00ffcc"}}
-            ))
-            st.plotly_chart(fig_gauge)
+        rain_today = float(input("Enter Rainfall today (mm): "))
+        h9 = float(input("Enter Humidity at 9am (%): "))
+        h3 = float(input("Enter Humidity at 3pm (%): "))
+        p9 = float(input("Enter Pressure at 9am (hPa): "))
+        p3 = float(input("Enter Pressure at 3pm (hPa): "))
+        c9 = float(input("Enter Cloud cover at 9am (0-8): "))
+        c3 = float(input("Enter Cloud cover at 3pm (0-8): "))
+        awi = float(input("Enter AWI (Total rain in last 7 days in mm): "))
 
-        # --- MAP VIEW ---
-        st.subheader(f"📍 Precision Mapping: {selected_city}")
-        st.map(pd.DataFrame({'lat': [lat], 'lon': [lon]}), zoom=11)
+        # Create input array
+        user_data = np.array([[rain_today, h9, h3, p9, p3, c9, c3, awi, loc_enc]])
 
-    else:
-        st.error("API Connection Lost.")
+        # Predict
+        prob = model.predict_proba(user_data)
+        rain_prob = prob[0][1]
+        confidence = np.max(prob[0])
+
+        # Determine Wetness State
+        if awi > 100:
+            wet_state = "Saturated"
+        elif awi > 30:
+            wet_state = "Moderately Wet"
+        else:
+            wet_state = "Dry"
+
+        # Display Results
+        print("\n--- SYSTEM OUTPUT ---")
+        print(f"Rain Probability Tomorrow: {rain_prob:.2f} ({(rain_prob*100):.1f}%)")
+        print(f"Wetness State: {wet_state}")
+        print(f"Confidence Score: {confidence:.2f}")
+
+    except ValueError:
+        print("Invalid input! Please enter numerical values for the weather data.")
+
+# Call the function to ask for your data
+get_manual_input()

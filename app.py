@@ -4,8 +4,6 @@ import numpy as np
 import plotly.express as px
 import plotly.graph_objects as go
 import requests
-from sklearn.ensemble import RandomForestClassifier
-from sklearn.preprocessing import LabelEncoder
 
 # --- 1. COORDINATES FOR 37 PAKISTANI CITIES ---
 LOCATIONS_PK = {
@@ -24,16 +22,15 @@ LOCATIONS_PK = {
     "Muzaffargarh": [30.07, 71.19]
 }
 
-# --- 2. SESSION STATE MANAGEMENT ---
-if 'view' not in st.session_state:
-    st.session_state.view = "Intro"  # Navigation States: Intro, Dashboard, Rain, Flood, Satellite, Economic
+# --- 2. SET PAGE CONFIG & SESSION STATE ---
+st.set_page_config(page_title="AI Flood Prediction Model", layout="wide", page_icon="📡")
 
-# --- 3. UI STYLING & AI NEURONS BACKGROUND ---
-st.set_page_config(page_title="AI Flood Prediction", layout="wide")
+if 'flow' not in st.session_state: st.session_state.flow = "Intro"
+if 'page' not in st.session_state: st.session_state.page = "Home"
 
+# --- 3. CUSTOM CSS ---
 st.markdown("""
     <style>
-    /* AI Neurons Background */
     .stApp {
         background: linear-gradient(rgba(0, 20, 40, 0.85), rgba(0, 20, 40, 0.85)), 
                     url("https://images.unsplash.com/photo-1677442136019-21780ecad995?auto=format&fit=crop&q=80&w=1920");
@@ -43,96 +40,106 @@ st.markdown("""
         background: linear-gradient(180deg, #000080 0%, #003366 100%) !important;
         border-right: 2px solid #fffdd0;
     }
-    .info-box {
-        background: rgba(0, 40, 80, 0.9); padding: 40px; border-radius: 25px;
-        border: 2px solid #add8e6; box-shadow: 0px 15px 40px rgba(0,0,0,0.6);
-        max-width: 1100px; margin: auto;
+    .info-card {
+        background: rgba(0, 40, 80, 0.9); padding: 30px; border-radius: 20px;
+        border: 2px solid #add8e6; box-shadow: 0px 10px 30px rgba(0,0,0,0.5);
     }
-    /* Welcome Button inside Info Box */
     .welcome-btn button {
         background-color: #add8e6 !important; color: #001f3f !important;
-        font-weight: bold !important; font-size: 22px !important;
-        border-radius: 12px !important; height: 70px !important; width: 100% !important;
-        border: 2px solid #fffdd0 !important;
+        height: 60px !important; font-size: 20px !important; border-radius: 12px !important;
     }
-    /* Dashboard Buttons Style */
-    .db-btn button {
-        width: 100% !important; height: 120px !important; border-radius: 10px 10px 0px 0px !important; 
-        background: #112240 !important; color: #fffdd0 !important; border: 4px solid #003366 !important;
-        font-weight: bold !important; box-shadow: 0px 8px 0px #000080 !important;
+    .stButton>button {
+        width: 100%; height: 120px; border-radius: 10px 10px 0px 0px; 
+        background: #112240; color: #fffdd0; border: 4px solid #add8e6;
+        font-weight: bold; font-size: 16px; box-shadow: 0px 8px 0px #00008B;
     }
     </style>
     """, unsafe_allow_html=True)
 
-# --- 4. PAGE LOGIC ---
+# --- 4. NAVIGATION LOGIC ---
 
-# PAGE 1: INTRODUCTORY FRONT PAGE
-if st.session_state.view == "Intro":
+# PAGE 1: INTRO (AI Neurons + Info Box)
+if st.session_state.flow == "Intro":
     st.write("##")
-    st.markdown('<h1 style="text-align:center; font-size: 55px; color:#add8e6; text-shadow: 2px 2px 10px #000;">AI FLOOD PREDICTION MODEL</h1>', unsafe_allow_html=True)
+    st.markdown('<h1 style="text-align:center; font-size: 55px; text-shadow: 2px 2px 10px #000;">AI FLOOD PREDICTION MODEL</h1>', unsafe_allow_html=True)
     st.write("##")
     
-    st.markdown('<div class="info-box">', unsafe_allow_html=True)
-    col_text, col_action = st.columns([2.5, 1])
-    
-    with col_text:
+    col_left, col_right = st.columns([2.5, 1])
+    with col_left:
         st.markdown(f"""
-            <h2 style="color:#add8e6; margin-bottom: 0px;">International Islamic University Islamabad</h2>
-            <p style="font-size: 20px;"><b>Department:</b> BE.tech AI (Electrical and Computer Engineering)</p>
-            <p style="font-size: 20px;"><b>Professor:</b> Engr. Asad</p>
-            <hr style="border: 0.5px solid #add8e6; opacity: 0.3;">
-            <p style="font-size: 18px; margin-bottom: 5px;"><b>Team Members:</b> Amna Mudassar Ali, Fatima Arshad, Ayesha Bint e Israr, Tehreen Ramesha</p>
-            <p style="font-size: 18px;"><b>Roll Numbers:</b> 016809, 012221, 012214, 012218</p>
+        <div class="info-card">
+            <h2 style="color:#add8e6;">International Islamic University Islamabad</h2>
+            <p style="font-size: 19px;"><b>Department:</b> BE.tech AI (Electrical and Computer Engineering)</p>
+            <p style="font-size: 19px;"><b>Professor:</b> Engr. Asad</p>
+            <hr style="opacity: 0.2;">
+            <p style="font-size: 17px;"><b>Team:</b> Amna Mudassar Ali, Fatima Arshad, Ayesha Bint e Israr, Tehreen Ramesha</p>
+            <p style="font-size: 17px;"><b>Roll No:</b> 016809, 012221, 012214, 012218</p>
+        </div>
         """, unsafe_allow_html=True)
-        
-    with col_action:
+    with col_right:
         st.write("##")
         st.write("##")
         st.markdown('<div class="welcome-btn">', unsafe_allow_html=True)
         if st.button("WELCOME"):
-            st.session_state.view = "Dashboard"
+            st.session_state.flow = "Dashboard"
             st.rerun()
         st.markdown('</div>', unsafe_allow_html=True)
-    st.markdown('</div>', unsafe_allow_html=True)
 
-# PAGE 2: DASHBOARD (4 BUTTONS)
-elif st.session_state.view == "Dashboard":
-    st.markdown('<h1 style="text-align:center; font-size: 50px; color:#add8e6;">AI FLOOD PREDICTION MODEL</h1>', unsafe_allow_html=True)
+# PAGE 2: DASHBOARD
+elif st.session_state.flow == "Dashboard" and st.session_state.page == "Home":
+    st.markdown('<h1 style="text-align:center;">AI FLOOD PREDICTION MODEL</h1>', unsafe_allow_html=True)
     st.write("##")
-    
-    cols = st.columns(4)
-    btn_data = [("EARLY RAIN\nPREDICTION", "Rain"), ("FLOOD RISK\nANALYSIS", "Flood"), 
-                ("SATELLITE\nMONITORING", "Satellite"), ("ECONOMIC\nIMPACT", "Economic")]
-    
-    for i, (name, target) in enumerate(btn_data):
-        with cols[i]:
-            st.markdown('<div class="db-btn">', unsafe_allow_html=True)
-            if st.button(f"🖥️\n{name}", key=f"dash_{i}"):
-                st.session_state.view = target
-                st.rerun()
-            st.markdown('</div>', unsafe_allow_html=True)
+    c1, c2, c3, c4 = st.columns(4)
+    with c1: 
+        if st.button("🖥️\nEARLY RAIN\nPREDICTION"): st.session_state.page = "Rain"; st.rerun()
+    with c2: 
+        if st.button("🖥️\nFLOOD RISK\nANALYSIS"): st.session_state.page = "Flood"; st.rerun()
+    with c3: 
+        if st.button("🖥️\nSATELLITE\nMONITORING"): st.session_state.page = "Satellite"; st.rerun()
+    with c4: 
+        if st.button("🖥️\nECONOMIC\nIMPACT"): st.session_state.page = "Economic"; st.rerun()
 
-# PAGE 3: DETAILED ANALYSIS PAGES
+# PAGE 3: FEATURE PAGES (With Live API Data)
 else:
     with st.sidebar:
-        st.markdown("### SYSTEM CONTROL")
-        if st.button("⬅️ DASHBOARD"):
-            st.session_state.view = "Dashboard"
-            st.rerun()
-        if st.button("🏠 MAIN PAGE"):
-            st.session_state.view = "Intro"
-            st.rerun()
+        st.markdown("<h3 style='color:white;'>SYSTEM CONTROL</h3>", unsafe_allow_html=True)
+        if st.button("⬅️ DASHBOARD"): st.session_state.page = "Home"; st.rerun()
+        if st.button("🏠 MAIN PAGE"): st.session_state.flow = "Intro"; st.session_state.page = "Home"; st.rerun()
         st.write("---")
         selected_city = st.selectbox("TARGET AREA", list(LOCATIONS_PK.keys()))
-
-    st.markdown(f"## 🛰️ Monitored Feed: {selected_city} - {st.session_state.view}")
     
-    # Graphs with BLACK LINE
-    y_data = np.random.randint(30, 95, 24)
-    fig = px.line(x=list(range(24)), y=y_data, title=f"Real-time {st.session_state.view} Analysis")
-    fig.update_traces(line_color='black', line_width=3)
-    fig.update_layout(paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(255,255,255,0.1)', font_color="#fffdd0")
-    st.plotly_chart(fig, use_container_width=True)
+    lat, lon = LOCATIONS_PK[selected_city]
+    
+    @st.cache_data(ttl=600)
+    def fetch_weather(lat, lon):
+        try:
+            url = f"https://api.open-meteo.com/v1/forecast?latitude={lat}&longitude={lon}&current_weather=true&hourly=temperature_2m,precipitation_probability,surface_pressure&timezone=auto"
+            return requests.get(url).json()
+        except: return None
 
-    if st.session_state.view == "Satellite":
-        st.map(pd.DataFrame({'lat': [LOCATIONS_PK[selected_city][0]], 'lon': [LOCATIONS_PK[selected_city][1]]}))
+    data = fetch_weather(lat, lon)
+
+    if data:
+        st.markdown(f"## 🛰️ Monitored Feed: {selected_city} - {st.session_state.page}")
+        
+        if st.session_state.page == "Rain":
+            fig = px.area(x=data['hourly']['time'][:24], y=data['hourly']['precipitation_probability'][:24])
+            fig.update_traces(line_color='black') 
+            fig.update_layout(paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)', font_color="#fffdd0")
+            st.plotly_chart(fig, use_container_width=True)
+            st.info(f"AI Prediction: Chance of Rain is {data['hourly']['precipitation_probability'][0]}%.")
+
+        elif st.session_state.page == "Flood":
+            risk = data['hourly']['precipitation_probability'][0]
+            fig = go.Figure(go.Indicator(mode="gauge+number", value=risk, gauge={'bar': {'color': "black"}}))
+            fig.update_layout(paper_bgcolor='rgba(0,0,0,0)', font_color="#fffdd0")
+            st.plotly_chart(fig, use_container_width=True)
+
+        elif st.session_state.page == "Satellite":
+            st.map(pd.DataFrame({'lat': [lat], 'lon': [lon]}))
+
+        elif st.session_state.page == "Economic":
+            impact_df = pd.DataFrame({"Sector": ["Agri", "Urban", "Infra"], "Risk": [25, 15, 30]})
+            fig = px.bar(impact_df, x="Sector", y="Risk", color_discrete_sequence=['black'])
+            fig.update_layout(paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)', font_color="#fffdd0")
+            st.plotly_chart(fig, use_container_width=True)

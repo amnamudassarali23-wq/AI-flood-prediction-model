@@ -95,11 +95,12 @@ if st.session_state.flow == "Intro":
         st.markdown(f"""
         <div class="info-card">
             <h2 style="color:#add8e6;">International Islamic University Islamabad</h2>
-            <p style="font-size: 19px;"><b>Department:</b> BE.tech AI (Electrical and Computer Engineering)</p>
-            <p style="font-size: 19px;"><b>Professor:</b> Engr. Asad</p>
+            <p style="font-size: 19px;"><b>Department:</b> Department of Electrical & Computer Engineering</p>
+            <p style="font-size: 19px;"><b>Program:</b> B.E Tech(AI)</p>
+            <p style="font-size: 19px;"><b>Supervisor:</b> Engr. Asad</p>
             <hr style="opacity: 0.2;">
             <p style="font-size: 17px;"><b>Team:</b> Amna Mudassar Ali, Fatima Arshad, Ayesha Bint e Israr, Tehreen Ramesha</p>
-            <p style="font-size: 17px;"><b>Roll No:</b> 016809, 012221, 012214, 012218</p>
+            <p style="font-size: 17px;"><b>Reg Numbers:</b> 016809, 012221, 012214, 012218</p>
         </div>
         """, unsafe_allow_html=True)
     with col_right:
@@ -155,13 +156,11 @@ else:
 
         if st.session_state.page == "Rain":
             fig = px.area(x=list(range(24)), y=data['hourly']['relative_humidity_2m'][:24])
-            # CHANGED TO LIGHT BLUE
             fig.update_traces(line_color='#add8e6') 
             fig.update_layout(paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(255,255,255,0.1)', font_color="#fffdd0")
             st.plotly_chart(fig, use_container_width=True)
 
         elif st.session_state.page == "Flood":
-            # CHANGED GAUGE BAR TO LIGHT BLUE
             fig = go.Figure(go.Indicator(mode="gauge+number", value=prob*100, gauge={'bar': {'color': "#add8e6"}}))
             fig.update_layout(paper_bgcolor='rgba(0,0,0,0)', font_color="#fffdd0")
             st.plotly_chart(fig, use_container_width=True)
@@ -172,7 +171,6 @@ else:
         elif st.session_state.page == "Economic":
             dynamic_risk = [prob*90, prob*60, prob*75]
             impact_df = pd.DataFrame({"Sector": ["Agri", "Urban", "Infra"], "Risk %": dynamic_risk})
-            # CHANGED BAR COLOR TO LIGHT BLUE
             fig = px.bar(impact_df, x="Sector", y="Risk %", color_discrete_sequence=['#add8e6'], range_y=[0, 100])
             fig.update_layout(paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(255,255,255,0.1)', font_color="#fffdd0")
             st.plotly_chart(fig, use_container_width=True)

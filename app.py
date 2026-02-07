@@ -26,15 +26,16 @@ LOCATIONS_PK = {
 
 # --- 2. SESSION STATE MANAGEMENT ---
 if 'view' not in st.session_state:
-    st.session_state.view = "Intro"  # Intro -> Dashboard -> Feature
+    st.session_state.view = "Intro"  # Navigation States: Intro, Dashboard, Rain, Flood, Satellite, Economic
 
-# --- 3. UI STYLING ---
+# --- 3. UI STYLING & AI NEURONS BACKGROUND ---
 st.set_page_config(page_title="AI Flood Prediction", layout="wide")
 
 st.markdown("""
     <style>
+    /* AI Neurons Background */
     .stApp {
-        background: linear-gradient(rgba(0, 20, 40, 0.8), rgba(0, 20, 40, 0.8)), 
+        background: linear-gradient(rgba(0, 20, 40, 0.85), rgba(0, 20, 40, 0.85)), 
                     url("https://images.unsplash.com/photo-1677442136019-21780ecad995?auto=format&fit=crop&q=80&w=1920");
         background-size: cover; background-position: center; color: #fffdd0;
     }
@@ -43,16 +44,18 @@ st.markdown("""
         border-right: 2px solid #fffdd0;
     }
     .info-box {
-        background: rgba(0, 40, 80, 0.85); padding: 40px; border-radius: 25px;
+        background: rgba(0, 40, 80, 0.9); padding: 40px; border-radius: 25px;
         border: 2px solid #add8e6; box-shadow: 0px 15px 40px rgba(0,0,0,0.6);
-        max-width: 1000px; margin: auto;
+        max-width: 1100px; margin: auto;
     }
+    /* Welcome Button inside Info Box */
     .welcome-btn button {
         background-color: #add8e6 !important; color: #001f3f !important;
         font-weight: bold !important; font-size: 22px !important;
-        border-radius: 12px !important; height: 60px !important; width: 100% !important;
+        border-radius: 12px !important; height: 70px !important; width: 100% !important;
+        border: 2px solid #fffdd0 !important;
     }
-    /* Dashboard 4-Buttons */
+    /* Dashboard Buttons Style */
     .db-btn button {
         width: 100% !important; height: 120px !important; border-radius: 10px 10px 0px 0px !important; 
         background: #112240 !important; color: #fffdd0 !important; border: 4px solid #003366 !important;
@@ -61,25 +64,29 @@ st.markdown("""
     </style>
     """, unsafe_allow_html=True)
 
-# --- 4. NAVIGATION LOGIC ---
+# --- 4. PAGE LOGIC ---
 
-# A. INTRO PAGE
+# PAGE 1: INTRODUCTORY FRONT PAGE
 if st.session_state.view == "Intro":
     st.write("##")
-    st.markdown('<h1 style="text-align:center; font-size: 60px; color:#add8e6; text-shadow: 3px 3px 10px #000;">AI FLOOD PREDICTION MODEL</h1>', unsafe_allow_html=True)
+    st.markdown('<h1 style="text-align:center; font-size: 55px; color:#add8e6; text-shadow: 2px 2px 10px #000;">AI FLOOD PREDICTION MODEL</h1>', unsafe_allow_html=True)
     st.write("##")
+    
     st.markdown('<div class="info-box">', unsafe_allow_html=True)
-    c1, c2 = st.columns([2, 1])
-    with c1:
+    col_text, col_action = st.columns([2.5, 1])
+    
+    with col_text:
         st.markdown(f"""
-            <h2 style="color:#add8e6; margin-bottom: 5px;">International Islamic University Islamabad</h2>
-            <p style="font-size: 18px;"><b>Department:</b> BE.tech AI (Electrical and Computer Engineering)</p>
-            <p style="font-size: 18px;"><b>Professor:</b> Engr. Asad</p>
+            <h2 style="color:#add8e6; margin-bottom: 0px;">International Islamic University Islamabad</h2>
+            <p style="font-size: 20px;"><b>Department:</b> BE.tech AI (Electrical and Computer Engineering)</p>
+            <p style="font-size: 20px;"><b>Professor:</b> Engr. Asad</p>
             <hr style="border: 0.5px solid #add8e6; opacity: 0.3;">
-            <p style="font-size: 17px;"><b>Team:</b> Amna Mudassar Ali, Fatima Arshad, Ayesha Bint e Israr, Tehreen Ramesha</p>
-            <p style="font-size: 17px;"><b>Roll No:</b> 016809, 012221, 012214, 012218</p>
+            <p style="font-size: 18px; margin-bottom: 5px;"><b>Team Members:</b> Amna Mudassar Ali, Fatima Arshad, Ayesha Bint e Israr, Tehreen Ramesha</p>
+            <p style="font-size: 18px;"><b>Roll Numbers:</b> 016809, 012221, 012214, 012218</p>
         """, unsafe_allow_html=True)
-    with c2:
+        
+    with col_action:
+        st.write("##")
         st.write("##")
         st.markdown('<div class="welcome-btn">', unsafe_allow_html=True)
         if st.button("WELCOME"):
@@ -88,23 +95,24 @@ if st.session_state.view == "Intro":
         st.markdown('</div>', unsafe_allow_html=True)
     st.markdown('</div>', unsafe_allow_html=True)
 
-# B. DASHBOARD (4 BUTTONS)
+# PAGE 2: DASHBOARD (4 BUTTONS)
 elif st.session_state.view == "Dashboard":
     st.markdown('<h1 style="text-align:center; font-size: 50px; color:#add8e6;">AI FLOOD PREDICTION MODEL</h1>', unsafe_allow_html=True)
     st.write("##")
+    
     cols = st.columns(4)
-    btn_defs = [("EARLY RAIN\nPREDICTION", "Rain"), ("FLOOD RISK\nANALYSIS", "Flood"), 
+    btn_data = [("EARLY RAIN\nPREDICTION", "Rain"), ("FLOOD RISK\nANALYSIS", "Flood"), 
                 ("SATELLITE\nMONITORING", "Satellite"), ("ECONOMIC\nIMPACT", "Economic")]
     
-    for i, (label, target) in enumerate(btn_defs):
+    for i, (name, target) in enumerate(btn_data):
         with cols[i]:
             st.markdown('<div class="db-btn">', unsafe_allow_html=True)
-            if st.button(f"🖥️\n{label}", key=f"btn_{i}"):
+            if st.button(f"🖥️\n{name}", key=f"dash_{i}"):
                 st.session_state.view = target
                 st.rerun()
             st.markdown('</div>', unsafe_allow_html=True)
 
-# C. FEATURE PAGES (RAIN, FLOOD, ETC)
+# PAGE 3: DETAILED ANALYSIS PAGES
 else:
     with st.sidebar:
         st.markdown("### SYSTEM CONTROL")
@@ -115,18 +123,16 @@ else:
             st.session_state.view = "Intro"
             st.rerun()
         st.write("---")
-        city = st.selectbox("TARGET AREA", list(LOCATIONS_PK.keys()))
+        selected_city = st.selectbox("TARGET AREA", list(LOCATIONS_PK.keys()))
 
-    st.markdown(f"## 🛰️ Monitored Feed: {city} - {st.session_state.view}")
+    st.markdown(f"## 🛰️ Monitored Feed: {selected_city} - {st.session_state.view}")
     
-    # Graphs with Black Line
-    y_vals = np.random.randint(20, 100, 24)
-    fig = px.line(x=list(range(24)), y=y_vals, title=f"Real-time {st.session_state.view} Data")
+    # Graphs with BLACK LINE
+    y_data = np.random.randint(30, 95, 24)
+    fig = px.line(x=list(range(24)), y=y_data, title=f"Real-time {st.session_state.view} Analysis")
     fig.update_traces(line_color='black', line_width=3)
     fig.update_layout(paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(255,255,255,0.1)', font_color="#fffdd0")
     st.plotly_chart(fig, use_container_width=True)
-    
-    if st.session_state.view == "Flood":
-        st.warning("AI Analysis: Tracking high-risk saturation zones.")
-    elif st.session_state.view == "Satellite":
-        st.map(pd.DataFrame({'lat': [LOCATIONS_PK[city][0]], 'lon': [LOCATIONS_PK[city][1]]}))
+
+    if st.session_state.view == "Satellite":
+        st.map(pd.DataFrame({'lat': [LOCATIONS_PK[selected_city][0]], 'lon': [LOCATIONS_PK[selected_city][1]]}))

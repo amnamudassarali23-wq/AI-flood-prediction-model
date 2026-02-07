@@ -51,7 +51,7 @@ def build_ai_engine():
 
 ai_model, label_encoder = build_ai_engine()
 
-# --- 3. UI STYLING & SIDEBAR GRADIENT ---
+# --- 3. UI STYLING ---
 st.set_page_config(page_title="AI Flood Prediction Model", layout="wide")
 
 if 'flow' not in st.session_state: st.session_state.flow = "Intro"
@@ -141,7 +141,7 @@ else:
     data = fetch_weather(lat, lon)
 
     if data:
-        # AI Calculation Logic
+        # AI Calculation
         h9, h3 = data['hourly']['relative_humidity_2m'][9], data['hourly']['relative_humidity_2m'][15]
         p9, p3 = data['hourly']['surface_pressure'][9], data['hourly']['surface_pressure'][15]
         c9, c3 = data['hourly']['cloudcover'][9]/12.5, data['hourly']['cloudcover'][15]/12.5
@@ -149,18 +149,20 @@ else:
         loc_enc = label_encoder.transform([selected_city])[0]
         input_data = np.array([[rain_now, h9, h3, p9, p3, c9, c3, loc_enc]])
         prob = ai_model.predict_proba(input_data)[0][1]
-        prob = min(1.0, prob * 1.5) # Prob scaling for visual impact
+        prob = min(1.0, prob * 1.5) 
 
         st.markdown(f"## 🛰️ Monitored Feed: {selected_city} - {st.session_state.page}")
 
         if st.session_state.page == "Rain":
             fig = px.area(x=list(range(24)), y=data['hourly']['relative_humidity_2m'][:24])
-            fig.update_traces(line_color='black') 
+            # CHANGED TO LIGHT BLUE
+            fig.update_traces(line_color='#add8e6') 
             fig.update_layout(paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(255,255,255,0.1)', font_color="#fffdd0")
             st.plotly_chart(fig, use_container_width=True)
 
         elif st.session_state.page == "Flood":
-            fig = go.Figure(go.Indicator(mode="gauge+number", value=prob*100, gauge={'bar': {'color': "black"}}))
+            # CHANGED GAUGE BAR TO LIGHT BLUE
+            fig = go.Figure(go.Indicator(mode="gauge+number", value=prob*100, gauge={'bar': {'color': "#add8e6"}}))
             fig.update_layout(paper_bgcolor='rgba(0,0,0,0)', font_color="#fffdd0")
             st.plotly_chart(fig, use_container_width=True)
 
@@ -168,10 +170,9 @@ else:
             st.map(pd.DataFrame({'lat': [lat], 'lon': [lon]}))
 
         elif st.session_state.page == "Economic":
-            # FIXED: Now risk changes dynamically with AI 'prob'
-            dynamic_risk = [prob*90, prob*60, prob*75] # Agri, Urban, Infra
+            dynamic_risk = [prob*90, prob*60, prob*75]
             impact_df = pd.DataFrame({"Sector": ["Agri", "Urban", "Infra"], "Risk %": dynamic_risk})
-            fig = px.bar(impact_df, x="Sector", y="Risk %", color_discrete_sequence=['black'], range_y=[0, 100])
+            # CHANGED BAR COLOR TO LIGHT BLUE
+            fig = px.bar(impact_df, x="Sector", y="Risk %", color_discrete_sequence=['#add8e6'], range_y=[0, 100])
             fig.update_layout(paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(255,255,255,0.1)', font_color="#fffdd0")
             st.plotly_chart(fig, use_container_width=True)
-            st.info(f"AI Economic Forecast: Risk levels based on current saturation in {selected_city}.")

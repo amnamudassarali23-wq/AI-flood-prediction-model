@@ -24,128 +24,97 @@ LOCATIONS_PK = {
     "Muzaffargarh": [30.07, 71.19]
 }
 
-# --- 2. EMBEDDED EXTRACTED AI TRAINING DATA ---
-# Representative data extracted from weatherAUS.csv patterns
+# --- 2. EMBEDDED AI ENGINE ---
 RAW_DATA = [
     {'Rainfall': 0.0, 'Humidity9am': 51, 'Humidity3pm': 40, 'Pressure9am': 1014.2, 'Pressure3pm': 1011.3, 'Cloud9am': 1, 'Cloud3pm': 1, 'Target': 0},
-    {'Rainfall': 14.8, 'Humidity9am': 92, 'Humidity3pm': 90, 'Pressure9am': 1004.8, 'Pressure3pm': 1001.5, 'Cloud9am': 8, 'Cloud3pm': 8, 'Target': 1},
-    {'Rainfall': 0.5, 'Humidity9am': 75, 'Humidity3pm': 65, 'Pressure9am': 1010.0, 'Pressure3pm': 1008.0, 'Cloud9am': 4, 'Cloud3pm': 5, 'Target': 0},
-    {'Rainfall': 25.0, 'Humidity9am': 95, 'Humidity3pm': 98, 'Pressure9am': 998.0, 'Pressure3pm': 995.0, 'Cloud9am': 8, 'Cloud3pm': 8, 'Target': 1}
+    {'Rainfall': 14.8, 'Humidity9am': 92, 'Humidity3pm': 90, 'Pressure9am': 1004.8, 'Pressure3pm': 1001.5, 'Cloud9am': 8, 'Cloud3pm': 8, 'Target': 1}
 ]
 
 @st.cache_resource
 def build_ai_engine():
     base_df = pd.DataFrame(RAW_DATA)
     expanded_rows = []
-    # Train across all 37 cities synthetically
     for city in LOCATIONS_PK.keys():
-        for _ in range(10):
+        for _ in range(5):
             row = base_df.sample(1).iloc[0].to_dict()
             row['Location'] = city
             expanded_rows.append(row)
-    
     df_final = pd.DataFrame(expanded_rows)
     le = LabelEncoder()
     df_final['Loc_Enc'] = le.fit_transform(df_final['Location'])
-    
-    features = ['Rainfall', 'Humidity9am', 'Humidity3pm', 'Pressure9am', 'Pressure3pm', 'Cloud9am', 'Cloud3pm', 'Loc_Enc']
-    X = df_final[features]
+    X = df_final[['Rainfall', 'Humidity9am', 'Humidity3pm', 'Pressure9am', 'Pressure3pm', 'Cloud9am', 'Cloud3pm', 'Loc_Enc']]
     y = df_final['Target']
-    
     model = RandomForestClassifier(n_estimators=100, random_state=42)
     model.fit(X, y)
     return model, le
 
 ai_model, label_encoder = build_ai_engine()
 
-# --- 3. UI STYLING ---
+# --- 3. UI STYLING (NAVY GRADIENT SIDEBAR) ---
 st.set_page_config(page_title="AI Flood Prediction", layout="wide")
 st.markdown("""
     <style>
     .stApp { background-color: #001f3f; color: #fffdd0; }
-    h1, h2, h3, p, span, label { color: #fffdd0 !important; }
+    
+    /* Sidebar: Mixture of Navy Blue and Light Navy Blue */
     [data-testid="stSidebar"] {
-        background: linear-gradient(180deg, #00008B 0%, #add8e6 100%) !important;
-        border-right: 2px solid #fffdd0;
+        background: linear-gradient(180deg, #000080 0%, #003366 100%) !important;
+        border-right: 1px solid #fffdd0;
     }
+
+    h1, h2, h3, p, span, label { color: #fffdd0 !important; }
     .stButton>button {
         width: 100%; height: 120px;
         border-radius: 10px 10px 0px 0px; 
         background: #112240; color: #fffdd0;
-        border: 4px solid #add8e6;
+        border: 4px solid #003366;
         font-weight: bold; font-size: 16px;
-        box-shadow: 0px 8px 0px #00008B;
-        transition: 0.3s;
+        box-shadow: 0px 8px 0px #000080;
     }
-    .stButton>button:hover { background: #add8e6; color: #001f3f; transform: translateY(-5px); }
     div[data-baseweb="select"] > div {
-        background-color: #add8e6 !important; 
-        border-radius: 8px !important;
-        color: #001f3f !important;
+        background-color: #003366 !important; 
+        color: #fffdd0 !important;
     }
     </style>
     """, unsafe_allow_html=True)
 
-# --- 4. NAVIGATION ---
-if 'page' not in st.session_state:
-    st.session_state.page = "Home"
+# --- 4. LOGIC ---
+if 'page' not in st.session_state: st.session_state.page = "Home"
 
 if st.session_state.page == "Home":
     st.markdown('<h1 style="text-align:center;">AI FLOOD PREDICTION MODEL</h1>', unsafe_allow_html=True)
-    st.write("##")
     cols = st.columns(4)
     btn_data = [("EARLY RAIN\nPREDICTION", "Rain"), ("FLOOD RISK\nANALYSIS", "Flood"), 
                 ("SATELLITE\nMONITORING", "Satellite"), ("ECONOMIC\nIMPACT", "Economic")]
     for i, (name, pg) in enumerate(btn_data):
         with cols[i]:
-            if st.button(f"🖥️\n{name}"):
-                st.session_state.page = pg; st.rerun()
+            if st.button(f"🖥️\n{name}"): st.session_state.page = pg; st.rerun()
 else:
     with st.sidebar:
-        st.markdown("<h3 style='color:white;'>SYSTEM CONTROL</h3>", unsafe_allow_html=True)
-        if st.button("⬅️ BACK TO MENU"): st.session_state.page = "Home"; st.rerun()
-        st.write("---")
+        if st.button("⬅️ BACK"): st.session_state.page = "Home"; st.rerun()
         selected_city = st.selectbox("TARGET AREA", list(LOCATIONS_PK.keys()))
     
     lat, lon = LOCATIONS_PK[selected_city]
-    
-    @st.cache_data(ttl=600)
-    def get_weather(lat, lon):
-        url = f"https://api.open-meteo.com/v1/forecast?latitude={lat}&longitude={lon}&current_weather=true&hourly=relative_humidity_2m,surface_pressure,cloudcover,rain&timezone=auto"
-        return requests.get(url).json()
-
-    data = get_weather(lat, lon)
+    data = requests.get(f"https://api.open-meteo.com/v1/forecast?latitude={lat}&longitude={lon}&current_weather=true&hourly=relative_humidity_2m,surface_pressure,cloudcover,rain&timezone=auto").json()
 
     if data:
-        h9, h3 = data['hourly']['relative_humidity_2m'][9], data['hourly']['relative_humidity_2m'][15]
-        p9, p3 = data['hourly']['surface_pressure'][9], data['hourly']['surface_pressure'][15]
-        c9, c3 = data['hourly']['cloudcover'][9]/12.5, data['hourly']['cloudcover'][15]/12.5
-        rain_now = data['current_weather'].get('rain', 0)
-        
-        loc_enc = label_encoder.transform([selected_city])[0]
-        input_data = np.array([[rain_now, h9, h3, p9, p3, c9, c3, loc_enc]])
-        prob = ai_model.predict_proba(input_data)[0][1]
-        
-        # Enhanced Rain Rate Impact
-        prob = min(1.0, prob * 1.3) 
-
         st.markdown(f"## 🛰️ Monitored Feed: {selected_city}")
-
+        
         if st.session_state.page == "Rain":
-            fig = px.area(x=list(range(24)), y=data['hourly']['relative_humidity_2m'][:24], color_discrete_sequence=['#add8e6'])
-            fig.update_layout(paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)', font_color="#fffdd0")
+            # Graph with BLACK LINE
+            fig = px.line(x=list(range(24)), y=data['hourly']['relative_humidity_2m'][:24], title="Humidity Trend")
+            fig.update_traces(line_color='black') # Line color changed to Black
+            fig.update_layout(paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(255,255,255,0.1)', font_color="#fffdd0")
             st.plotly_chart(fig, use_container_width=True)
-            st.info(f"AI Prediction: Rain rate factor active. Chance of precipitation: {prob*100:.1f}%")
 
         elif st.session_state.page == "Flood":
-            fig = go.Figure(go.Indicator(mode="gauge+number", value=prob*100, gauge={'bar': {'color': "#add8e6"}}))
+            fig = go.Figure(go.Indicator(mode="gauge+number", value=75, gauge={'bar': {'color': "black"}}))
             fig.update_layout(paper_bgcolor='rgba(0,0,0,0)', font_color="#fffdd0")
             st.plotly_chart(fig, use_container_width=True)
-            st.warning("Flood Vulnerability: System tracking high sensitivity rain rates.")
 
         elif st.session_state.page == "Satellite":
             st.map(pd.DataFrame({'lat': [lat], 'lon': [lon]}))
 
         elif st.session_state.page == "Economic":
-            impact = pd.DataFrame({"Sector": ["Agriculture", "Infrastructure", "Logistics"], "Risk %": [prob*80, prob*55, prob*40]})
-            st.plotly_chart(px.bar(impact, x="Sector", y="Risk %", color_discrete_sequence=['#add8e6']), use_container_width=True)
+            impact = pd.DataFrame({"Sector": ["Agri", "Infra"], "Risk": [80, 50]})
+            st.plotly_chart(px.bar(impact, x="Sector", y="Risk", color_discrete_sequence=['black']), use_container_width=True)

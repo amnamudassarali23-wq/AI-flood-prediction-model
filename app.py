@@ -7,15 +7,15 @@ import requests
 # --- 1. SET PAGE CONFIG ---
 st.set_page_config(page_title="AI Flood prediction model", layout="wide", page_icon="📡")
 
-# --- 2. CUSTOM CSS (Navy, Cream, Light Blue & Gradient Sidebar) ---
+# --- 2. CUSTOM CSS (Navy, Cream, Light Blue & Blue Gradient Sidebar) ---
 st.markdown("""
     <style>
     .stApp { background-color: #001f3f; color: #fffdd0; }
     h1, h2, h3, p, span, label { color: #fffdd0 !important; }
 
-    /* Sidebar Gradient: Mixture of Light Blue and Black */
+    /* Sidebar Gradient: Mixture of Light Blue and Dark Blue */
     [data-testid="stSidebar"] {
-        background: linear-gradient(180deg, #000000 0%, #add8e6 100%) !important;
+        background: linear-gradient(180deg, #00008B 0%, #add8e6 100%) !important;
         border-right: 2px solid #fffdd0;
     }
 
@@ -74,7 +74,7 @@ if st.session_state.page == "Home":
 else:
     # --- 5. DASHBOARD WITH GRAPHS & RESULTS ---
     with st.sidebar:
-        st.markdown("<h3 style='color:black;'>SYSTEM CONTROL</h3>", unsafe_allow_html=True)
+        st.markdown("<h3 style='color:white;'>SYSTEM CONTROL</h3>", unsafe_allow_html=True)
         if st.button("⬅️ BACK TO MENU"): st.session_state.page = "Home"; st.rerun()
         st.write("---")
         selected_city = st.selectbox("TARGET AREA", list(LOCATIONS.keys()))
@@ -83,51 +83,44 @@ else:
     
     @st.cache_data(ttl=600)
     def fetch_weather(lat, lon):
-        url = f"https://api.open-meteo.com/v1/forecast?latitude={lat}&longitude={lon}&current_weather=true&hourly=temperature_2m,precipitation_probability,surface_pressure&timezone=auto"
-        return requests.get(url).json()
+        try:
+            url = f"https://api.open-meteo.com/v1/forecast?latitude={lat}&longitude={lon}&current_weather=true&hourly=temperature_2m,precipitation_probability,surface_pressure&timezone=auto"
+            return requests.get(url).json()
+        except: return None
 
     data = fetch_weather(lat, lon)
 
     if data:
         st.markdown(f"## 🛰️ Monitored Feed: {selected_city}")
         
-        # --- BUTTON SPECIFIC RESULTS & GRAPHS ---
         if st.session_state.page == "Rain":
             st.subheader("🌧️ Early Rain Prediction Analysis")
-            # Graph
             fig = px.area(x=data['hourly']['time'][:24], y=data['hourly']['precipitation_probability'][:24],
-                          labels={'x': 'Time', 'y': 'Rain Prob %'}, color_discrete_sequence=['#add8e6'])
+                          color_discrete_sequence=['#add8e6'])
+            fig.update_layout(paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)', font_color="#fffdd0")
             st.plotly_chart(fig, use_container_width=True)
-            # Result
-            prob = data['hourly']['precipitation_probability'][0]
-            st.info(f"AI Result: {selected_city} has a {prob}% chance of rain in the next hour. Systems are monitoring cloud density.")
+            st.info(f"AI Result: Rain probability is {data['hourly']['precipitation_probability'][0]}%.")
 
         elif st.session_state.page == "Flood":
             st.subheader("🌊 Hydrological Risk Assessment")
-            # Gauge Graph
             risk_val = data['hourly']['precipitation_probability'][0]
             fig = go.Figure(go.Indicator(
                 mode = "gauge+number", value = risk_val,
                 gauge = {'axis': {'range': [None, 100]}, 'bar': {'color': "#add8e6"}}
             ))
+            fig.update_layout(paper_bgcolor='rgba(0,0,0,0)', font_color="#fffdd0")
             st.plotly_chart(fig, use_container_width=True)
-            # Result
-            status = "STABLE" if risk_val < 40 else "CRITICAL"
-            st.warning(f"AI Monitoring: Water saturation levels are {status}. Pre-emptive drainage protocols active.")
+            st.warning("AI Monitoring: Hydrological levels under observation.")
 
         elif st.session_state.page == "Satellite":
             st.subheader("🛰️ Live Satellite Surveillance")
-            # Map as a monitored result
             st.map(pd.DataFrame({'lat': [lat], 'lon': [lon]}))
-            st.success(f"Satellite Fix: Coordinates {lat}, {lon} verified. Cloud movement tracking is active.")
 
         elif st.session_state.page == "Economic":
             st.subheader("📉 Projected Economic Impact")
-            # Bar Chart
-            impact_data = pd.DataFrame({"Sector": ["Agri", "Urban", "Infrastructure"], "Risk": [20, 15, 35]})
-            fig = px.bar(impact_data, x="Sector", y="Risk", color_discrete_sequence=['#add8e6'])
+            impact_df = pd.DataFrame({"Sector": ["Agri", "Urban", "Infra"], "Risk": [25, 15, 30]})
+            fig = px.bar(impact_df, x="Sector", y="Risk", color_discrete_sequence=['#add8e6'])
+            fig.update_layout(paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)', font_color="#fffdd0")
             st.plotly_chart(fig, use_container_width=True)
-            st.info("AI Projection: Potential infrastructure loss minimized by 12% through early warning detection.")
-
     else:
-        st.error("Connection failed.")
+        st.error("System connection lost.")

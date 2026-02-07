@@ -7,29 +7,62 @@ import requests
 # --- 1. SET PAGE CONFIG ---
 st.set_page_config(page_title="PAK-CLIMATE AI PRO", layout="wide", page_icon="🧪")
 
-# --- 2. UI STYLING ---
+# --- 2. ADVANCED DARK NAVY STYLING ---
 st.markdown("""
     <style>
+    /* Dark Navy Gradient Background */
     .stApp {
-        background: radial-gradient(circle at top right, #1a2a6c, #b21f1f, #fdbb2d);
-        background-attachment: fixed;
-        color: #e0e0e0;
+        background: linear-gradient(135deg, #020c1b, #0a192f, #112240);
+        color: #ccd6f6;
     }
+    
+    /* Neon Glow Title */
     .main-title {
         font-size: 45px !important;
         font-weight: 800;
         text-align: center;
-        color: #ffffff;
-        text-shadow: 0 0 10px #00ffcc;
-        letter-spacing: 3px;
-    }
-    .metric-card {
-        background: rgba(255, 255, 255, 0.1);
+        color: #64ffda;
+        text-shadow: 0 0 15px rgba(100, 255, 218, 0.3);
+        letter-spacing: 4px;
         padding: 20px;
+    }
+
+    /* Glassmorphic Metric Cards */
+    .metric-card {
+        background: rgba(17, 34, 64, 0.7);
+        padding: 25px;
         border-radius: 15px;
         backdrop-filter: blur(10px);
         text-align: center;
-        border: 1px solid rgba(255,255,255,0.1);
+        border: 1px solid #233554;
+        transition: transform 0.3s ease;
+    }
+    .metric-card:hover {
+        border-color: #64ffda;
+        transform: translateY(-5px);
+    }
+    
+    /* Professional Sidebar */
+    [data-testid="stSidebar"] {
+        background-color: #020c1b !important;
+        border-right: 1px solid #233554;
+    }
+
+    /* Modern Buttons */
+    .stButton>button {
+        width: 100%;
+        border-radius: 10px;
+        height: 70px;
+        background: #112240;
+        color: #64ffda;
+        border: 1px solid #64ffda;
+        font-weight: bold;
+        transition: 0.3s;
+    }
+    .stButton>button:hover {
+        background: #64ffda;
+        color: #020c1b;
+        box-shadow: 0 0 20px rgba(100, 255, 218, 0.4);
     }
     </style>
     """, unsafe_allow_html=True)
@@ -52,56 +85,72 @@ if st.session_state.page == "Home":
     
     col1, col2, col3, col4 = st.columns(4)
     with col1:
-        if st.button("🌧️ RAIN PREDICTION"):
+        if st.button("🌧️\nRAIN\nPREDICTION"):
             st.session_state.page = "Rain"; st.rerun()
     with col2:
-        if st.button("🌊 FLOOD DYNAMICS"):
+        if st.button("🌊\nFLOOD\nDYNAMICS"):
             st.session_state.page = "Flood"; st.rerun()
     with col3:
-        if st.button("🛰️ SATELLITE INTEL"):
+        if st.button("🛰️\nSATELLITE\nINTEL"):
             st.session_state.page = "Satellite"; st.rerun()
     with col4:
-        if st.button("📉 RECOVERY COST"):
+        if st.button("📉\nECONOMIC\nIMPACT"):
             st.session_state.page = "Economic"; st.rerun()
 else:
     # --- 5. DASHBOARD VIEW ---
-    st.sidebar.button("⬅️ HOME", on_click=lambda: st.session_state.update({"page": "Home"}))
-    selected_city = st.sidebar.selectbox("🎯 SELECT AREA", sorted(list(LOCATIONS.keys())))
+    with st.sidebar:
+        if st.button("⬅️ RETURN TO COMMAND"):
+            st.session_state.page = "Home"; st.rerun()
+        st.write("---")
+        selected_city = st.selectbox("🎯 SELECT OPERATIONAL AREA", sorted(list(LOCATIONS.keys())))
+    
     lat, lon = LOCATIONS[selected_city]
 
     @st.cache_data(ttl=600)
     def fetch_weather(lat, lon):
-        url = f"https://api.open-meteo.com/v1/forecast?latitude={lat}&longitude={lon}&current_weather=true&hourly=temperature_2m,precipitation_probability&timezone=auto"
-        return requests.get(url).json()
+        try:
+            url = f"https://api.open-meteo.com/v1/forecast?latitude={lat}&longitude={lon}&current_weather=true&hourly=temperature_2m,precipitation_probability&timezone=auto"
+            return requests.get(url).json()
+        except:
+            return None
 
     data = fetch_weather(lat, lon)
 
     if data:
-        st.markdown(f'<h2 style="color:white;">Operational Intel: {selected_city}</h2>', unsafe_allow_html=True)
+        st.markdown(f'<h2 style="color:#64ffda;">📍 Operational Intel: {selected_city}</h2>', unsafe_allow_html=True)
         
         curr = data['current_weather']
         rain_val = data['hourly']['precipitation_probability'][0]
         
+        # Metric Grid
         c1, c2, c3 = st.columns(3)
-        with c1: st.markdown(f'<div class="metric-card">🌡️ TEMP<h3>{curr["temperature"]}°C</h3></div>', unsafe_allow_html=True)
-        with c2: st.markdown(f'<div class="metric-card">💨 WIND<h3>{curr["windspeed"]}kph</h3></div>', unsafe_allow_html=True)
-        with c3: st.markdown(f'<div class="metric-card">💧 RAIN<h3>{rain_val}%</h3></div>', unsafe_allow_html=True)
+        with c1: st.markdown(f'<div class="metric-card"><span style="color:#8892b0">TEMP</span><h1 style="color:#64ffda">{curr["temperature"]}°C</h1></div>', unsafe_allow_html=True)
+        with c2: st.markdown(f'<div class="metric-card"><span style="color:#8892b0">WIND</span><h1 style="color:#64ffda">{curr["windspeed"]}kph</h1></div>', unsafe_allow_html=True)
+        with c3: st.markdown(f'<div class="metric-card"><span style="color:#8892b0">RAIN</span><h1 style="color:#64ffda">{rain_val}%</h1></div>', unsafe_allow_html=True)
 
         st.write("---")
         
+        # Analysis Visualization
         if st.session_state.page == "Rain":
-            fig = px.line(x=data['hourly']['time'][:24], y=data['hourly']['precipitation_probability'][:24], 
-                          title="24h Rain Probability", markers=True)
+            fig = px.area(x=data['hourly']['time'][:24], y=data['hourly']['precipitation_probability'][:24], 
+                          title="24h Precipitation Forecast")
+            fig.update_traces(line_color='#64ffda', fillcolor='rgba(100, 255, 218, 0.2)')
+            fig.update_layout(paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)', font_color="#ccd6f6")
             st.plotly_chart(fig, use_container_width=True)
         
         elif st.session_state.page == "Flood":
-            st.subheader("Flood Risk Gauge")
+            st.subheader("Hydrological Risk Gauge")
             fig = go.Figure(go.Indicator(
                 mode = "gauge+number", value = rain_val,
-                gauge = {'axis': {'range': [None, 100]}, 'bar': {'color': "#00ffcc"}}
-            ))
+                gauge = {'axis': {'range': [None, 100], 'tickcolor': "#ccd6f6"},
+                         'bar': {'color': "#64ffda"},
+                         'bgcolor': "#112240",
+                         'steps': [{'range': [0, 70], 'color': '#233554'}, {'range': [70, 100], 'color': '#f56565'}]}))
+            fig.update_layout(paper_bgcolor='rgba(0,0,0,0)', font_color="#ccd6f6")
             st.plotly_chart(fig, use_container_width=True)
 
-        st.map(pd.DataFrame({'lat': [lat], 'lon': [lon]}))
+        # Map View
+        st.subheader("Geospatial Target Visualization")
+        st.map(pd.DataFrame({'lat': [lat], 'lon': [lon]}), zoom=11)
     else:
-        st.error("System Error: Unable to fetch data.")
+        st.error("📡 SATELLITE LINK LOST: Check API or Internet Connection.")

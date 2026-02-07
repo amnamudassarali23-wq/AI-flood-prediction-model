@@ -24,88 +24,92 @@ LOCATIONS_PK = {
     "Muzaffargarh": [30.07, 71.19]
 }
 
-# --- 2. AI ENGINE ---
-RAW_DATA = [{'Rainfall': 0.0, 'Humidity': 50, 'Pressure': 1010, 'Target': 0}, {'Rainfall': 20.0, 'Humidity': 90, 'Pressure': 990, 'Target': 1}]
-@st.cache_resource
-def build_ai():
-    df = pd.DataFrame(RAW_DATA * 50)
-    le = LabelEncoder()
-    le.fit(list(LOCATIONS_PK.keys()))
-    model = RandomForestClassifier().fit(np.random.rand(100, 8), np.random.randint(0, 2, 100))
-    return model, le
-ai_model, label_encoder = build_ai()
+# --- 2. SESSION STATE ---
+if 'flow' not in st.session_state: st.session_state.flow = "Intro"
+if 'page' not in st.session_state: st.session_state.page = "Home"
 
 # --- 3. UI STYLING ---
 st.set_page_config(page_title="AI Flood Prediction", layout="wide")
+
+# AI Background and Styling
 st.markdown("""
     <style>
-    .stApp { background-color: #001f3f; color: #fffdd0; }
+    .stApp {
+        background: linear-gradient(rgba(0, 31, 63, 0.85), rgba(0, 31, 63, 0.85)), 
+                    url("https://images.unsplash.com/photo-1677442136019-21780ecad995?q=80&w=2000&auto=format&fit=crop");
+        background-size: cover;
+        background-attachment: fixed;
+        color: #fffdd0;
+    }
     [data-testid="stSidebar"] {
         background: linear-gradient(180deg, #000080 0%, #003366 100%) !important;
         border-right: 2px solid #fffdd0;
     }
     .main-card {
-        background: rgba(0, 51, 102, 0.6); padding: 40px; border-radius: 25px;
-        border: 3px solid #add8e6; text-align: center; margin: auto; max-width: 900px;
-        box-shadow: 0px 15px 35px rgba(0,0,0,0.7);
+        background: rgba(0, 51, 102, 0.8); padding: 30px; border-radius: 20px;
+        border: 2px solid #add8e6; text-align: left;
+        box-shadow: 0px 10px 30px rgba(0,0,0,0.5);
     }
-    .start-btn button {
-        background: #add8e6 !important; color: #001f3f !important;
-        font-weight: bold !important; font-size: 24px !important;
-        padding: 20px 50px !important; border-radius: 15px !important;
-        width: 300px !important; height: 80px !important;
-    }
+    /* Welcome Button Styling */
     .stButton>button {
-        width: 100%; height: 120px; border-radius: 10px 10px 0px 0px; 
-        background: #112240; color: #fffdd0; border: 4px solid #003366;
-        font-weight: bold; box-shadow: 0px 8px 0px #000080;
+        background: #add8e6 !important; color: #001f3f !important;
+        font-weight: bold !important; font-size: 20px !important;
+        border-radius: 10px !important; border: 2px solid #fffdd0 !important;
+        height: 60px !important; width: 100% !important;
+        transition: 0.3s;
+    }
+    .dashboard-btn>div>button {
+        height: 120px !important; background: #112240 !important; color: #fffdd0 !important;
+        border-radius: 10px 10px 0px 0px !important; border: 4px solid #003366 !important;
+        box-shadow: 0px 8px 0px #000080 !important;
     }
     </style>
     """, unsafe_allow_html=True)
 
-# --- 4. SESSION STATE ---
-if 'flow' not in st.session_state: st.session_state.flow = "Intro"
-if 'page' not in st.session_state: st.session_state.page = "Home"
-
-# --- 5. PAGE LOGIC ---
+# --- 4. PAGE LOGIC ---
 
 # PAGE 1: INTRODUCTORY FRONT PAGE
 if st.session_state.flow == "Intro":
     st.write("##")
-    st.markdown(f"""
-    <div class="main-card">
-        <h1 style="color:#add8e6; font-size: 45px;">AI FLOOD PREDICTION SYSTEM</h1>
-        <p style="font-size: 20px; opacity: 0.8;">Final Year Project Development</p>
-        <hr style="border: 1px solid #add8e6; opacity: 0.2;">
-        <h3 style="color:#fffdd0;">International Islamic University Islamabad</h3>
-        <p style="font-size: 18px;"><b>Department:</b> BE.tech AI (Electrical and Computer Engineering)</p>
-        <p style="font-size: 18px;"><b>Professor:</b> Engr. Asad</p>
-        <div style="background: rgba(0,0,0,0.2); padding: 20px; border-radius: 15px; margin: 20px 0;">
-            <p><b>Team Members:</b> Amna Mudassar Ali, Fatima Arshad, Ayesha Bint e Israr, Tehreen Ramesha</p>
-            <p><b>Roll Numbers:</b> 016809, 012221, 012214, 012218</p>
-        </div>
-    </div>
-    """, unsafe_allow_html=True)
+    st.markdown('<h1 style="text-align:center; font-size: 55px; color:#add8e6; text-shadow: 2px 2px 10px #000;">AI FLOOD PREDICTION MODEL</h1>', unsafe_allow_html=True)
     st.write("##")
-    col1, col2, col3 = st.columns([1,1,1])
+    
+    col1, col2 = st.columns([2, 1])
+    
+    with col1:
+        st.markdown(f"""
+        <div class="main-card">
+            <h3 style="color:#add8e6; border-bottom: 2px solid #add8e6;">INSTITUTIONAL DETAILS</h3>
+            <p style="font-size: 19px; margin-top:15px;"><b>University:</b> International Islamic University Islamabad</p>
+            <p style="font-size: 19px;"><b>Department:</b> BE.tech AI (Electrical and Computer Engineering)</p>
+            <p style="font-size: 19px;"><b>Professor:</b> Engr. Asad</p>
+            <hr style="opacity: 0.2;">
+            <p style="font-size: 17px;"><b>Team:</b> Amna Mudassar Ali, Fatima Arshad, Ayesha Bint e Israr, Tehreen Ramesha</p>
+            <p style="font-size: 17px;"><b>Roll No:</b> 016809, 012221, 012214, 012218</p>
+        </div>
+        """, unsafe_allow_html=True)
+        
     with col2:
-        st.markdown('<div class="start-btn">', unsafe_allow_html=True)
-        if st.button("LET'S START"):
+        st.write("##")
+        st.write("##")
+        st.write("##")
+        if st.button("WELCOME"):
             st.session_state.flow = "Dashboard"
             st.rerun()
-        st.markdown('</div>', unsafe_allow_html=True)
 
-# PAGE 2: PREVIOUS 4-BUTTON FRONT PAGE
+# PAGE 2: DASHBOARD
 elif st.session_state.flow == "Dashboard" and st.session_state.page == "Home":
-    st.markdown('<h1 style="text-align:center;">SYSTEM DASHBOARD</h1>', unsafe_allow_html=True)
-    st.write("##")
+    st.markdown('<h1 style="text-align:center; font-size: 45px;">AI FLOOD PREDICTION MODEL</h1>', unsafe_allow_html=True)
+    st.write("---")
     cols = st.columns(4)
     btn_data = [("EARLY RAIN\nPREDICTION", "Rain"), ("FLOOD RISK\nANALYSIS", "Flood"), 
                 ("SATELLITE\nMONITORING", "Satellite"), ("ECONOMIC\nIMPACT", "Economic")]
     for i, (name, pg) in enumerate(btn_data):
         with cols[i]:
+            st.markdown('<div class="dashboard-btn">', unsafe_allow_html=True)
             if st.button(f"🖥️\n{name}"):
                 st.session_state.page = pg; st.rerun()
+            st.markdown('</div>', unsafe_allow_html=True)
 
 # PAGE 3: FEATURE PAGES
 else:
@@ -117,8 +121,9 @@ else:
         city = st.selectbox("TARGET AREA", list(LOCATIONS_PK.keys()))
     
     st.markdown(f"## 🛰️ Monitored Feed: {city}")
-    # Graphs remain with black line as requested
-    fig = px.line(x=list(range(24)), y=np.random.randint(40, 90, 24))
-    fig.update_traces(line_color='black')
-    fig.update_layout(paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(255,255,255,0.1)', font_color="#fffdd0")
+    # Graph logic with black line
+    y_data = np.random.randint(30, 90, 24)
+    fig = px.line(x=list(range(24)), y=y_data, title="Live Atmospheric Saturation")
+    fig.update_traces(line_color='black', line_width=3)
+    fig.update_layout(paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(255,255,255,0.2)', font_color="#fffdd0")
     st.plotly_chart(fig, use_container_width=True)

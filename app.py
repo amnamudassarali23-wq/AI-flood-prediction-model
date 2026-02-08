@@ -7,7 +7,6 @@ import requests
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.preprocessing import LabelEncoder
 
-# --- 1. COORDINATES FOR 37 PAKISTANI CITIES ---
 LOCATIONS_PK = {
     "Karachi": [24.86, 67.00], "Lahore": [31.52, 74.35], "Faisalabad": [31.45, 73.13], 
     "Rawalpindi": [33.60, 73.04], "Gujranwala": [32.18, 74.19], "Peshawar": [34.01, 71.52], 
@@ -24,15 +23,13 @@ LOCATIONS_PK = {
     "Muzaffargarh": [30.07, 71.19]
 }
 
-# --- 2. AI ENGINE ---
-RAW_DATA = [
-    {'Rainfall': 0.0, 'Humidity9am': 51, 'Humidity3pm': 40, 'Pressure9am': 1014.2, 'Pressure3pm': 1011.3, 'Cloud9am': 1, 'Cloud3pm': 1, 'Target': 0},
-    {'Rainfall': 14.8, 'Humidity9am': 92, 'Humidity3pm': 90, 'Pressure9am': 1004.8, 'Pressure3pm': 1001.5, 'Cloud9am': 8, 'Cloud3pm': 8, 'Target': 1}
-]
-
 @st.cache_resource
 def build_ai_engine():
-    base_df = pd.DataFrame(RAW_DATA)
+    raw_data = [
+        {'Rainfall': 0.0, 'Humidity9am': 51, 'Humidity3pm': 40, 'Pressure9am': 1014.2, 'Pressure3pm': 1011.3, 'Cloud9am': 1, 'Cloud3pm': 1, 'Target': 0},
+        {'Rainfall': 14.8, 'Humidity9am': 92, 'Humidity3pm': 90, 'Pressure9am': 1004.8, 'Pressure3pm': 1001.5, 'Cloud9am': 8, 'Cloud3pm': 8, 'Target': 1}
+    ]
+    base_df = pd.DataFrame(raw_data)
     expanded_rows = []
     for city in LOCATIONS_PK.keys():
         for _ in range(5):
@@ -43,15 +40,13 @@ def build_ai_engine():
     le = LabelEncoder()
     df_final['Loc_Enc'] = le.fit_transform(df_final['Location'])
     features = ['Rainfall', 'Humidity9am', 'Humidity3pm', 'Pressure9am', 'Pressure3pm', 'Cloud9am', 'Cloud3pm', 'Loc_Enc']
-    X = df_final[features]
-    y = df_final['Target']
+    X, y = df_final[features], df_final['Target']
     model = RandomForestClassifier(n_estimators=100, random_state=42)
     model.fit(X, y)
     return model, le
 
 ai_model, label_encoder = build_ai_engine()
 
-# --- 3. UI STYLING ---
 st.set_page_config(page_title="AI Flood Prediction Model", layout="wide")
 
 if 'flow' not in st.session_state: st.session_state.flow = "Intro"
@@ -85,7 +80,6 @@ st.markdown("""
     </style>
     """, unsafe_allow_html=True)
 
-# --- 4. NAVIGATION ---
 if st.session_state.flow == "Intro":
     st.write("##")
     st.markdown('<h1 style="text-align:center; font-size: 55px; text-shadow: 2px 2px 10px #000;">AI FLOOD PREDICTION MODEL</h1>', unsafe_allow_html=True)
@@ -142,7 +136,6 @@ else:
     data = fetch_weather(lat, lon)
 
     if data:
-        # AI Calculation
         h9, h3 = data['hourly']['relative_humidity_2m'][9], data['hourly']['relative_humidity_2m'][15]
         p9, p3 = data['hourly']['surface_pressure'][9], data['hourly']['surface_pressure'][15]
         c9, c3 = data['hourly']['cloudcover'][9]/12.5, data['hourly']['cloudcover'][15]/12.5

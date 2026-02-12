@@ -7,20 +7,34 @@ import requests
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.preprocessing import LabelEncoder
 
+# Comprehensive Dictionary of Cities across Pakistan
 LOCATIONS_PK = {
-    "Karachi": [24.86, 67.00], "Lahore": [31.52, 74.35], "Faisalabad": [31.45, 73.13], 
-    "Rawalpindi": [33.60, 73.04], "Gujranwala": [32.18, 74.19], "Peshawar": [34.01, 71.52], 
-    "Multan": [30.15, 71.45], "Hyderabad": [25.39, 68.37], "Islamabad": [33.68, 73.04], 
-    "Quetta": [30.17, 66.97], "Sargodha": [32.08, 72.67], "Sialkot": [32.49, 74.52], 
-    "Bahawalpur": [29.35, 71.69], "Sukkur": [27.72, 68.82], "Jhang": [31.27, 72.33], 
-    "Sheikhupura": [31.71, 73.98], "Rahim Yar Khan": [28.42, 70.29], "Dera Ghazi Khan": [30.04, 70.63], 
-    "Gujrat": [32.57, 74.07], "Sahiwal": [30.66, 73.11], "Wah": [33.77, 72.75], 
-    "Mardan": [34.19, 72.04], "Kasur": [31.11, 74.45], "Okara": [30.81, 73.45], 
-    "Mingora": [34.77, 72.36], "Nawabshah": [26.24, 68.41], "Chiniot": [31.72, 72.97], 
-    "Kotri": [25.37, 68.31], "Kamoke": [32.01, 74.22], "Hafizabad": [32.06, 73.68], 
-    "Sadiqabad": [28.31, 70.13], "Mirpur Khas": [25.52, 69.01], "Burewala": [30.15, 72.68], 
-    "Kohat": [33.58, 71.44], "Khanewal": [30.30, 71.93], "Dera Ismail Khan": [31.83, 70.90], 
-    "Muzaffargarh": [30.07, 71.19]
+    # Punjab
+    "Lahore": [31.52, 74.35], "Faisalabad": [31.45, 73.13], "Rawalpindi": [33.60, 73.04], 
+    "Gujranwala": [32.18, 74.19], "Multan": [30.15, 71.45], "Sialkot": [32.49, 74.52], 
+    "Bahawalpur": [29.35, 71.69], "Sargodha": [32.08, 72.67], "Sahiwal": [30.66, 73.11], 
+    "Okara": [30.81, 73.45], "Gujrat": [32.57, 74.07], "Sheikhupura": [31.71, 73.98], 
+    "Jhang": [31.27, 72.33], "Rahim Yar Khan": [28.42, 70.29], "Kasur": [31.11, 74.45], 
+    "Dera Ghazi Khan": [30.04, 70.63], "Wah": [33.77, 72.75], "Chiniot": [31.72, 72.97], 
+    "Hafizabad": [32.06, 73.68], "Burewala": [30.15, 72.68], "Khanewal": [30.30, 71.93],
+    "Murree": [33.90, 73.39], "Taxila": [33.74, 72.80], "Attock": [33.76, 72.36],
+    # Sindh
+    "Karachi": [24.86, 67.00], "Hyderabad": [25.39, 68.37], "Sukkur": [27.72, 68.82], 
+    "Larkana": [27.55, 68.20], "Nawabshah": [26.24, 68.41], "Mirpur Khas": [25.52, 69.01], 
+    "Jacobabad": [28.28, 68.43], "Shikarpur": [27.95, 68.63], "Kotri": [25.37, 68.31], 
+    "Dadu": [26.73, 67.77], "Thatta": [24.74, 67.92], "Badin": [24.65, 68.83],
+    # KPK
+    "Peshawar": [34.01, 71.52], "Mardan": [34.19, 72.04], "Mingora": [34.77, 72.36], 
+    "Kohat": [33.58, 71.44], "Abbottabad": [34.16, 73.22], "Dera Ismail Khan": [31.83, 70.90], 
+    "Swat": [34.80, 72.35], "Mansehra": [34.33, 73.19], "Nowshera": [34.01, 71.97], 
+    "Swabi": [34.12, 72.46], "Bannu": [32.98, 70.60], "Chitral": [35.85, 71.78],
+    # Balochistan
+    "Quetta": [30.17, 66.97], "Gwadar": [25.12, 62.32], "Turbat": [26.00, 63.04], 
+    "Khuzdar": [27.81, 66.61], "Chaman": [30.91, 66.45], "Sibi": [29.54, 67.87], 
+    "Ziarat": [30.38, 67.72], "Loralai": [30.37, 68.59], "Panjgur": [26.96, 64.09],
+    # Federal & AJK/GB
+    "Islamabad": [33.68, 73.04], "Muzaffarabad": [34.37, 73.47], "Mirpur": [33.14, 73.75], 
+    "Gilgit": [35.92, 74.30], "Skardu": [35.29, 75.63]
 }
 
 @st.cache_resource
@@ -122,7 +136,7 @@ else:
         if st.button("⬅️ DASHBOARD"): st.session_state.page = "Home"; st.rerun()
         if st.button("🏠 MAIN PAGE"): st.session_state.flow = "Intro"; st.session_state.page = "Home"; st.rerun()
         st.write("---")
-        selected_city = st.selectbox("TARGET AREA", list(LOCATIONS_PK.keys()))
+        selected_city = st.selectbox("TARGET AREA", sorted(list(LOCATIONS_PK.keys())))
     
     lat, lon = LOCATIONS_PK[selected_city]
     

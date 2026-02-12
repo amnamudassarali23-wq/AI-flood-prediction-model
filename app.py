@@ -7,7 +7,7 @@ import requests
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.preprocessing import LabelEncoder
 
-# Comprehensive District-Level Dictionary for All Pakistan
+# 170+ Locations across Pakistan
 LOCATIONS_PK = {
     # PUNJAB
     "Lahore": [31.52, 74.35], "Faisalabad": [31.45, 73.13], "Rawalpindi": [33.60, 73.04], 
@@ -31,7 +31,7 @@ LOCATIONS_PK = {
     "Tharparkar": [24.87, 70.10], "Kashmore": [28.43, 69.33], "Jamshoro": [25.43, 68.26], 
     "Tando Allahyar": [25.46, 68.71], "Tando Muhammad Khan": [25.12, 68.53], "Matiari": [25.59, 68.44], 
     "Kambar Shahdadkot": [27.58, 67.98], "Sujawal": [24.60, 68.07], "Malir": [24.90, 67.19],
-    # KHYBER PAKHTUNKHWA
+    # KPK
     "Peshawar": [34.01, 71.52], "Mardan": [34.19, 72.04], "Mingora": [34.77, 72.36], 
     "Abbottabad": [34.16, 73.22], "Kohat": [33.58, 71.44], "Dera Ismail Khan": [31.83, 70.90], 
     "Nowshera": [34.01, 71.97], "Swabi": [34.12, 72.46], "Charsadda": [34.14, 71.73], 
@@ -164,7 +164,6 @@ else:
         if st.button("⬅️ DASHBOARD"): st.session_state.page = "Home"; st.rerun()
         if st.button("🏠 MAIN PAGE"): st.session_state.flow = "Intro"; st.session_state.page = "Home"; st.rerun()
         st.write("---")
-        # Added alphabetical sorting for the massive city list
         selected_city = st.selectbox("TARGET AREA", sorted(list(LOCATIONS_PK.keys())))
     
     lat, lon = LOCATIONS_PK[selected_city]
@@ -173,40 +172,52 @@ else:
     def fetch_weather(lat, lon):
         try:
             url = f"https://api.open-meteo.com/v1/forecast?latitude={lat}&longitude={lon}&current_weather=true&hourly=relative_humidity_2m,surface_pressure,cloudcover,rain&timezone=auto"
-            return requests.get(url).json()
-        except: return None
+            resp = requests.get(url)
+            if resp.status_code == 200:
+                return resp.json()
+            else:
+                return None
+        except:
+            return None
 
     data = fetch_weather(lat, lon)
 
-    if data:
-        h9, h3 = data['hourly']['relative_humidity_2m'][9], data['hourly']['relative_humidity_2m'][15]
-        p9, p3 = data['hourly']['surface_pressure'][9], data['hourly']['surface_pressure'][15]
-        c9, c3 = data['hourly']['cloudcover'][9]/12.5, data['hourly']['cloudcover'][15]/12.5
-        rain_now = data['current_weather'].get('rain', 0)
-        loc_enc = label_encoder.transform([selected_city])[0]
-        input_data = np.array([[rain_now, h9, h3, p9, p3, c9, c3, loc_enc]])
-        prob = ai_model.predict_proba(input_data)[0][1]
-        prob = min(1.0, prob * 1.5) 
+    # UPDATED SECTION: Added 'if data and 'hourly' in data' to prevent the KeyError
+    if data and 'hourly' in data:
+        try:
+            h9, h3 = data['hourly']['relative_humidity_2m'][9], data['hourly']['relative_humidity_2m'][15]
+            p9, p3 = data['hourly']['surface_pressure'][9], data['hourly']['surface_pressure'][15]
+            c9, c3 = data['hourly']['cloudcover'][9]/12.5, data['hourly']['cloudcover'][15]/12.5
+            rain_now = data['current_weather'].get('rain', 0)
+            
+            loc_enc = label_encoder.transform([selected_city])[0]
+            input_data = np.array([[rain_now, h9, h3, p9, p3, c9, c3, loc_enc]])
+            prob = ai_model.predict_proba(input_data)[0][1]
+            prob = min(1.0, prob * 1.5) 
 
-        st.markdown(f"## 🛰️ Monitored Feed: {selected_city} - {st.session_state.page}")
+            st.markdown(f"## 🛰️ Monitored Feed: {selected_city} - {st.session_state.page}")
 
-        if st.session_state.page == "Rain":
-            fig = px.area(x=list(range(24)), y=data['hourly']['relative_humidity_2m'][:24])
-            fig.update_traces(line_color='#add8e6') 
-            fig.update_layout(paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(255,255,255,0.1)', font_color="#fffdd0")
-            st.plotly_chart(fig, use_container_width=True)
+            if st.session_state.page == "Rain":
+                fig = px.area(x=list(range(24)), y=data['hourly']['relative_humidity_2m'][:24])
+                fig.update_traces(line_color='#add8e6') 
+                fig.update_layout(paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(255,255,255,0.1)', font_color="#fffdd0")
+                st.plotly_chart(fig, use_container_width=True)
 
-        elif st.session_state.page == "Flood":
-            fig = go.Figure(go.Indicator(mode="gauge+number", value=prob*100, gauge={'bar': {'color': "#add8e6"}}))
-            fig.update_layout(paper_bgcolor='rgba(0,0,0,0)', font_color="#fffdd0")
-            st.plotly_chart(fig, use_container_width=True)
+            elif st.session_state.page == "Flood":
+                fig = go.Figure(go.Indicator(mode="gauge+number", value=prob*100, gauge={'bar': {'color': "#add8e6"}}))
+                fig.update_layout(paper_bgcolor='rgba(0,0,0,0)', font_color="#fffdd0")
+                st.plotly_chart(fig, use_container_width=True)
 
-        elif st.session_state.page == "Satellite":
-            st.map(pd.DataFrame({'lat': [lat], 'lon': [lon]}))
+            elif st.session_state.page == "Satellite":
+                st.map(pd.DataFrame({'lat': [lat], 'lon': [lon]}))
 
-        elif st.session_state.page == "Economic":
-            dynamic_risk = [prob*90, prob*60, prob*75]
-            impact_df = pd.DataFrame({"Sector": ["Agri", "Urban", "Infra"], "Risk %": dynamic_risk})
-            fig = px.bar(impact_df, x="Sector", y="Risk %", color_discrete_sequence=['#add8e6'], range_y=[0, 100])
-            fig.update_layout(paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(255,255,255,0.1)', font_color="#fffdd0")
-            st.plotly_chart(fig, use_container_width=True)
+            elif st.session_state.page == "Economic":
+                dynamic_risk = [prob*90, prob*60, prob*75]
+                impact_df = pd.DataFrame({"Sector": ["Agri", "Urban", "Infra"], "Risk %": dynamic_risk})
+                fig = px.bar(impact_df, x="Sector", y="Risk %", color_discrete_sequence=['#add8e6'], range_y=[0, 100])
+                fig.update_layout(paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(255,255,255,0.1)', font_color="#fffdd0")
+                st.plotly_chart(fig, use_container_width=True)
+        except (KeyError, IndexError):
+            st.error("Live sensor data for this location is currently unavailable. Please try again or select a different city.")
+    else:
+        st.warning("📡 Connecting to Satellite API... Please check your internet connection if this takes too long.")

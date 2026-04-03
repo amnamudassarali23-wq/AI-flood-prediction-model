@@ -1,223 +1,356 @@
 import streamlit as st
+import json
 import pandas as pd
-import numpy as np
+from streamlit_option_menu import option_menu
 import plotly.express as px
 import plotly.graph_objects as go
-import requests
-from sklearn.ensemble import RandomForestClassifier
-from sklearn.preprocessing import LabelEncoder
+from datetime import datetime
 
-# 170+ Locations across Pakistan
-LOCATIONS_PK = {
-    # PUNJAB
-    "Lahore": [31.52, 74.35], "Faisalabad": [31.45, 73.13], "Rawalpindi": [33.60, 73.04], 
-    "Gujranwala": [32.18, 74.19], "Multan": [30.15, 71.45], "Sialkot": [32.49, 74.52], 
-    "Bahawalpur": [29.35, 71.69], "Sargodha": [32.08, 72.67], "Sahiwal": [30.66, 73.11], 
-    "Gujrat": [32.57, 74.07], "Sheikhupura": [31.71, 73.98], "Jhang": [31.27, 72.33], 
-    "Rahim Yar Khan": [28.42, 70.29], "Kasur": [31.11, 74.45], "Okara": [30.81, 73.45], 
-    "Dera Ghazi Khan": [30.04, 70.63], "Chiniot": [31.72, 72.97], "Hafizabad": [32.06, 73.68], 
-    "Mandi Bahauddin": [32.58, 73.48], "Attock": [33.76, 72.36], "Chakwal": [32.93, 72.85], 
-    "Jhelum": [32.94, 73.72], "Khushab": [32.29, 72.35], "Mianwali": [32.58, 71.51], 
-    "Bhakkar": [31.62, 71.06], "Layyah": [30.96, 70.94], "Muzaffargarh": [30.07, 71.19], 
-    "Rajanpur": [29.10, 70.32], "Lodhran": [29.54, 71.63], "Vehari": [30.04, 72.35], 
-    "Khanewal": [30.30, 71.93], "Pakpattan": [30.34, 73.38], "Bahawalnagar": [29.99, 73.25], 
-    "Nankana Sahib": [31.44, 73.70], "Narowal": [32.10, 74.87], "Toba Tek Singh": [31.13, 72.48],
-    # SINDH
-    "Karachi": [24.86, 67.00], "Hyderabad": [25.39, 68.37], "Sukkur": [27.72, 68.82], 
-    "Larkana": [27.55, 68.20], "Nawabshah": [26.24, 68.41], "Mirpur Khas": [25.52, 69.01], 
-    "Jacobabad": [28.28, 68.43], "Shikarpur": [27.95, 68.63], "Thatta": [24.74, 67.92], 
-    "Dadu": [26.73, 67.77], "Badin": [24.65, 68.83], "Ghotki": [28.00, 69.31], 
-    "Khairpur": [27.52, 68.75], "Umarkot": [25.36, 69.73], "Sanghar": [26.04, 68.94], 
-    "Tharparkar": [24.87, 70.10], "Kashmore": [28.43, 69.33], "Jamshoro": [25.43, 68.26], 
-    "Tando Allahyar": [25.46, 68.71], "Tando Muhammad Khan": [25.12, 68.53], "Matiari": [25.59, 68.44], 
-    "Kambar Shahdadkot": [27.58, 67.98], "Sujawal": [24.60, 68.07], "Malir": [24.90, 67.19],
-    # KPK
-    "Peshawar": [34.01, 71.52], "Mardan": [34.19, 72.04], "Mingora": [34.77, 72.36], 
-    "Abbottabad": [34.16, 73.22], "Kohat": [33.58, 71.44], "Dera Ismail Khan": [31.83, 70.90], 
-    "Nowshera": [34.01, 71.97], "Swabi": [34.12, 72.46], "Charsadda": [34.14, 71.73], 
-    "Mansehra": [34.33, 73.19], "Haripur": [33.99, 72.93], "Bannu": [32.98, 70.60], 
-    "Karak": [33.11, 71.09], "Lakki Marwat": [32.60, 70.91], "Tank": [32.22, 70.37], 
-    "Chitral": [35.85, 71.78], "Upper Dir": [35.20, 71.87], "Lower Dir": [34.84, 71.84], 
-    "Malakand": [34.56, 71.92], "Swat": [34.80, 72.35], "Shangla": [34.88, 72.75], 
-    "Battagram": [34.67, 73.02], "Upper Kohistan": [35.25, 73.31], "Lower Kohistan": [35.15, 73.21], 
-    "Bajaur": [34.78, 71.52], "Khyber": [33.91, 71.08], "Kurram": [33.82, 70.11], 
-    "Mohmand": [34.42, 71.45], "North Waziristan": [32.97, 70.06], "South Waziristan": [32.30, 69.85], 
-    "Hangu": [33.53, 71.05], "Buner": [34.39, 72.61], "Torghar": [34.52, 72.84],
-    # BALOCHISTAN
-    "Quetta": [30.17, 66.97], "Gwadar": [25.12, 62.32], "Turbat": [26.00, 63.04], 
-    "Khuzdar": [27.81, 66.61], "Chaman": [30.91, 66.45], "Sibi": [29.54, 67.87], 
-    "Loralai": [30.37, 68.59], "Zhob": [31.34, 69.45], "Kalat": [29.02, 66.59], 
-    "Nushki": [29.55, 66.02], "Panjgur": [26.96, 64.09], "Kharan": [28.58, 65.41], 
-    "Mastung": [29.79, 66.84], "Ziarat": [30.38, 67.72], "Pishin": [30.58, 66.99], 
-    "Dera Bugti": [29.03, 69.15], "Kohlu": [29.89, 69.25], "Barkhan": [29.89, 69.72], 
-    "Musakhel": [30.86, 69.81], "Jafarabad": [28.35, 68.21], "Nasirabad": [28.51, 68.22], 
-    "Lasbela": [25.84, 66.32], "Awaran": [25.98, 65.22], "Washuk": [27.53, 64.71], 
-    "Chagai": [29.05, 64.41], "Duki": [30.15, 68.57], "Harnai": [30.10, 67.93], 
-    "Jhal Magsi": [28.37, 67.62], "Kachhi": [29.03, 67.60], "Killa Abdullah": [30.73, 66.60], 
-    "Killa Saifullah": [30.70, 68.23], "Sohbatpur": [28.52, 68.54], "Surab": [28.49, 66.26],
-    # AJK, GB & ISLAMABAD
-    "Islamabad": [33.68, 73.04], "Muzaffarabad": [34.37, 73.47], "Mirpur": [33.14, 73.75], 
-    "Kotli": [33.51, 73.90], "Bagh": [33.98, 73.77], "Rawalakot": [33.85, 73.76], 
-    "Bhimber": [32.97, 73.91], "Neelum": [34.59, 73.91], "Haveli": [33.92, 74.10], 
-    "Sudhnoti": [33.71, 73.68], "Gilgit": [35.92, 74.30], "Skardu": [35.29, 75.63], 
-    "Hunza": [36.31, 74.64], "Diamer": [35.41, 74.10], "Astore": [35.36, 74.85], 
-    "Ghanche": [35.19, 76.33], "Ghizer": [36.17, 73.58], "Kharmang": [34.93, 76.12], 
-    "Shigar": [35.42, 75.73], "Nagar": [36.21, 74.70]
-}
+# Page config
+st.set_page_config(
+    page_title="Luxury Interiors",
+    page_icon="🏠",
+    layout="wide",
+    initial_sidebar_state="expanded"
+)
 
-@st.cache_resource
-def build_ai_engine():
-    raw_data = [
-        {'Rainfall': 0.0, 'Humidity9am': 51, 'Humidity3pm': 40, 'Pressure9am': 1014.2, 'Pressure3pm': 1011.3, 'Cloud9am': 1, 'Cloud3pm': 1, 'Target': 0},
-        {'Rainfall': 14.8, 'Humidity9am': 92, 'Humidity3pm': 90, 'Pressure9am': 1004.8, 'Pressure3pm': 1001.5, 'Cloud9am': 8, 'Cloud3pm': 8, 'Target': 1}
-    ]
-    base_df = pd.DataFrame(raw_data)
-    expanded_rows = []
-    for city in LOCATIONS_PK.keys():
-        for _ in range(5):
-            row = base_df.sample(1).iloc[0].to_dict()
-            row['Location'] = city
-            expanded_rows.append(row)
-    df_final = pd.DataFrame(expanded_rows)
-    le = LabelEncoder()
-    df_final['Loc_Enc'] = le.fit_transform(df_final['Location'])
-    features = ['Rainfall', 'Humidity9am', 'Humidity3pm', 'Pressure9am', 'Pressure3pm', 'Cloud9am', 'Cloud3pm', 'Loc_Enc']
-    X, y = df_final[features], df_final['Target']
-    model = RandomForestClassifier(n_estimators=100, random_state=42)
-    model.fit(X, y)
-    return model, le
-
-ai_model, label_encoder = build_ai_engine()
-
-st.set_page_config(page_title="AI Flood Prediction Model", layout="wide")
-
-if 'flow' not in st.session_state: st.session_state.flow = "Intro"
-if 'page' not in st.session_state: st.session_state.page = "Home"
-
+# Custom CSS for Luxury Interior Design Theme
 st.markdown("""
     <style>
-    .stApp {
-        background: linear-gradient(rgba(0, 20, 40, 0.85), rgba(0, 20, 40, 0.85)), 
-                    url("https://images.unsplash.com/photo-1677442136019-21780ecad995?auto=format&fit=crop&q=80&w=1920");
-        background-size: cover; background-position: center; color: #fffdd0;
+    @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700&family=Inter:wght@300;400;500&display=swap');
+    
+    .main-header {
+        background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+        padding: 2rem;
+        border-radius: 20px;
+        text-align: center;
+        color: white;
+        margin-bottom: 2rem;
+        box-shadow: 0 20px 40px rgba(0,0,0,0.3);
     }
-    [data-testid="stSidebar"] {
-        background: linear-gradient(180deg, #00008B 0%, #add8e6 100%) !important;
-        border-right: 2px solid #fffdd0;
+    
+    .luxury-title {
+        font-family: 'Playfair Display', serif;
+        font-size: 3.5rem;
+        margin: 0;
+        text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
     }
-    .info-card {
-        background: rgba(0, 40, 80, 0.9); padding: 30px; border-radius: 20px; border: 2px solid #add8e6;
+    
+    .subtitle {
+        font-family: 'Inter', sans-serif;
+        font-size: 1.3rem;
+        opacity: 0.9;
+        margin-top: 1rem;
     }
-    .welcome-btn button {
-        background-color: #add8e6 !important; color: #001f3f !important; font-weight: bold; height: 60px !important; border-radius: 12px !important;
+    
+    .product-card {
+        background: linear-gradient(145deg, #ffffff, #f0f4f8);
+        border-radius: 20px;
+        padding: 2rem;
+        margin: 1rem 0;
+        box-shadow: 0 15px 35px rgba(0,0,0,0.1);
+        border: 1px solid rgba(255,255,255,0.5);
+        transition: all 0.3s ease;
+        cursor: pointer;
     }
-    .stButton>button {
-        width: 100%; height: 120px; border-radius: 10px 10px 0px 0px; 
-        background: #112240; color: #fffdd0; border: 4px solid #add8e6;
-        font-weight: bold; font-size: 16px; box-shadow: 0px 8px 0px #00008B;
+    
+    .product-card:hover {
+        transform: translateY(-10px);
+        box-shadow: 0 25px 50px rgba(0,0,0,0.15);
     }
-    div[data-baseweb="select"] > div {
-        background-color: #003366 !important; color: #fffdd0 !important;
+    
+    .price-tag {
+        background: linear-gradient(45deg, #ffd700, #ffed4e);
+        color: #1a1a1a;
+        padding: 12px 24px;
+        border-radius: 50px;
+        font-weight: bold;
+        font-size: 1.4rem;
+        box-shadow: 0 8px 20px rgba(255,215,0,0.3);
+    }
+    
+    .add-to-cart-btn {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        border: none;
+        padding: 15px 30px;
+        border-radius: 50px;
+        font-size: 1.1rem;
+        font-weight: 500;
+        cursor: pointer;
+        transition: all 0.3s;
+        width: 100%;
+        margin-top: 1rem;
+    }
+    
+    .add-to-cart-btn:hover {
+        transform: scale(1.05);
+        box-shadow: 0 15px 30px rgba(102,126,234,0.4);
+    }
+    
+    .metric-container {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        padding: 2rem;
+        border-radius: 20px;
+        color: white;
+    }
+    
+    .stMetric > label {
+        color: white !important;
+        font-size: 1.2rem;
+    }
+    
+    .stMetric > div > div {
+        color: white !important;
+        font-size: 2.5rem;
+        font-weight: bold;
     }
     </style>
-    """, unsafe_allow_html=True)
+""", unsafe_allow_html=True)
 
-if st.session_state.flow == "Intro":
-    st.write("##")
-    st.markdown('<h1 style="text-align:center; font-size: 55px; text-shadow: 2px 2px 10px #000;">AI FLOOD PREDICTION MODEL</h1>', unsafe_allow_html=True)
-    st.write("##")
-    col_left, col_right = st.columns([2.5, 1])
-    with col_left:
-        st.markdown(f"""
-        <div class="info-card">
-            <h2 style="color:#add8e6;">International Islamic University Islamabad</h2>
-            <p style="font-size: 19px;"><b>Department:</b> Department of Electrical & Computer Engineering</p>
-            <p style="font-size: 19px;"><b>Program:</b> B.E Tech(AI)</p>
-            <p style="font-size: 19px;"><b>Supervisor:</b> Engr. Asad</p>
-            <hr style="opacity: 0.2;">
-            <p style="font-size: 17px;"><b>Team:</b> Amna Mudassar Ali, Fatima Arshad, Ayesha Bint e Israr, Tehreen Ramesha</p>
-            <p style="font-size: 17px;"><b>Reg Numbers:</b> 016809, 012221, 012214, 012218</p>
+# Load products
+@st.cache_data
+def load_products():
+    products_data = {
+        "sofas": [
+            {"id": 1, "name": "Velvet Chesterfield Sofa", "price": 2999, "category": "sofas", "image": "🛋️", "stock": 12},
+            {"id": 2, "name": "Modern L-Shape Sofa", "price": 2499, "category": "sofas", "image": "🛋️", "stock": 8},
+            {"id": 3, "name": "Luxury Leather Sectional", "price": 4999, "category": "sofas", "image": "🛋️", "stock": 5}
+        ],
+        "tables": [
+            {"id": 4, "name": "Marble Coffee Table", "price": 899, "category": "tables", "image": "☕", "stock": 15},
+            {"id": 5, "name": "Oak Dining Table", "price": 1799, "category": "tables", "image": "🍽️", "stock": 10},
+            {"id": 6, "name": "Glass Side Table", "price": 299, "category": "tables", "image": "☕", "stock": 20}
+        ],
+        "chairs": [
+            {"id": 7, "name": "Eames Lounge Chair", "price": 1299, "category": "chairs", "image": "🪑", "stock": 18},
+            {"id": 8, "name": "Velvet Armchair", "price": 799, "category": "chairs", "image": "🪑", "stock": 25},
+            {"id": 9, "name": "Bar Stool Set", "price": 599, "category": "chairs", "image": "🪑", "stock": 30}
+        ],
+        "lighting": [
+            {"id": 10, "name": "Crystal Chandelier", "price": 2499, "category": "lighting", "image": "💡", "stock": 6},
+            {"id": 11, "name": "Modern Floor Lamp", "price": 399, "category": "lighting", "image": "💡", "stock": 22},
+            {"id": 12, "name": "Wall Sconces (Pair)", "price": 299, "category": "lighting", "image": "💡", "stock": 15}
+        ],
+        "decor": [
+            {"id": 13, "name": "Persian Rug 8x10", "price": 2999, "category": "decor", "image": "🧳", "stock": 4},
+            {"id": 14, "name": "Wall Art Set", "price": 599, "category": "decor", "image": "🎨", "stock": 12},
+            {"id": 15, "name": "Marble Vase", "price": 199, "category": "decor", "image": "🪴", "stock": 35}
+        ]
+    }
+    return [item for sublist in products_data.values() for item in sublist]
+
+products = load_products()
+
+# Session state
+if 'cart' not in st.session_state:
+    st.session_state.cart = []
+if 'total' not in st.session_state:
+    st.session_state.total = 0
+if 'selected' not in st.session_state:
+    st.session_state.selected = "catalog"
+
+# Sidebar Navigation
+with st.sidebar:
+    st.markdown("## 🏠 Luxury Interiors")
+    selected = option_menu(
+        menu_title=None,
+        options=["🏠 Catalog", "🛒 Cart", "💳 Checkout", "📊 Dashboard"],
+        icons=["house", "cart", "credit-card", "bar-chart"],
+        menu_icon="cast",
+        default_index=0,
+        styles={
+            "container": {"padding": "0!important", "background": "linear-gradient(135deg, #1e3c72 0%, #2a5298 100%)"},
+            "nav-link": {"font-size": "16px", "text-align": "left", "margin": "0!important", "--hover-color": "#eee"},
+            "nav-link-selected": {"background": "rgba(255, 255, 255, 0.2)"},
+        }
+    )
+
+# Header
+st.markdown("""
+    <div class="main-header">
+        <h1 class="luxury-title">Luxury Interiors</h1>
+        <p class="subtitle">Premium Furniture & Home Decor for Discerning Tastes</p>
+    </div>
+""", unsafe_allow_html=True)
+
+# Metrics
+col1, col2, col3, col4 = st.columns(4)
+with col1:
+    st.markdown(
+        """
+        <div class="metric-container">
+            <div class="stMetric">
+                <label>Total Products</label>
+                <div>{}</div>
+            </div>
         </div>
-        """, unsafe_allow_html=True)
-    with col_right:
-        st.write("##")
-        st.markdown('<div class="welcome-btn">', unsafe_allow_html=True)
-        if st.button("WELCOME"):
-            st.session_state.flow = "Dashboard"
-            st.rerun()
-        st.markdown('</div>', unsafe_allow_html=True)
+        """.format(len(products)),
+        unsafe_allow_html=True
+    )
+with col2:
+    st.markdown(
+        """
+        <div class="metric-container">
+            <div class="stMetric">
+                <label>Cart Items</label>
+                <div>{}</div>
+            </div>
+        </div>
+        """.format(len(st.session_state.cart)),
+        unsafe_allow_html=True
+    )
+with col3:
+    st.markdown(
+        """
+        <div class="metric-container">
+            <div class="stMetric">
+                <label>Order Total</label>
+                <div>${:,.2f}</div>
+            </div>
+        </div>
+        """.format(st.session_state.total),
+        unsafe_allow_html=True
+    )
+with col4:
+    total_stock = sum(p['stock'] for p in products)
+    st.markdown(
+        """
+        <div class="metric-container">
+            <div class="stMetric">
+                <label>In Stock</label>
+                <div>{}</div>
+            </div>
+        </div>
+        """.format(total_stock),
+        unsafe_allow_html=True
+    )
 
-elif st.session_state.flow == "Dashboard" and st.session_state.page == "Home":
-    st.markdown('<h1 style="text-align:center; font-size: 45px;">AI FLOOD PREDICTION MODEL</h1>', unsafe_allow_html=True)
-    st.write("##")
-    c1, c2, c3, c4 = st.columns(4)
-    btn_defs = [("EARLY RAIN\nPREDICTION", "Rain"), ("FLOOD RISK\nANALYSIS", "Flood"), 
-                ("SATELLITE\nMONITORING", "Satellite"), ("ECONOMIC\nIMPACT", "Economic")]
-    for i, (name, target) in enumerate(btn_defs):
-        with [c1, c2, c3, c4][i]:
-            if st.button(f"🖥️\n{name}", key=f"dash_{i}"):
-                st.session_state.page = target; st.rerun()
-
-else:
-    with st.sidebar:
-        st.markdown("<h3 style='color:white;'>SYSTEM CONTROL</h3>", unsafe_allow_html=True)
-        if st.button("⬅️ DASHBOARD"): st.session_state.page = "Home"; st.rerun()
-        if st.button("🏠 MAIN PAGE"): st.session_state.flow = "Intro"; st.session_state.page = "Home"; st.rerun()
-        st.write("---")
-        selected_city = st.selectbox("TARGET AREA", sorted(list(LOCATIONS_PK.keys())))
+# Page Content
+if selected == "🏠 Catalog":
+    st.header("✨ Premium Collection")
     
-    lat, lon = LOCATIONS_PK[selected_city]
+    # Filters
+    col1, col2 = st.columns([2, 1])
+    with col1:
+        search = st.text_input("🔍 Search products...", key="search")
+    with col2:
+        price_range = st.slider("💰 Price Range", 0, 5000, (0, 5000), key="price_range")
     
-    @st.cache_data(ttl=600)
-    def fetch_weather(lat, lon):
-        try:
-            url = f"https://api.open-meteo.com/v1/forecast?latitude={lat}&longitude={lon}&current_weather=true&hourly=relative_humidity_2m,surface_pressure,cloudcover,rain&timezone=auto"
-            resp = requests.get(url)
-            if resp.status_code == 200:
-                return resp.json()
-            else:
-                return None
-        except:
-            return None
+    # Filter products
+    filtered_products = [
+        p for p in products 
+        if (not search or search.lower() in p['name'].lower()) and 
+           price_range[0] <= p['price'] <= price_range[1]
+    ]
+    
+    # Category tabs
+    tab1, tab2, tab3, tab4, tab5 = st.tabs(["🛋️ Sofas", "☕ Tables", "🪑 Chairs", "💡 Lighting", "🎨 Decor"])
+    
+    with tab1:
+        sofas = [p for p in filtered_products if p['category'] == 'sofas']
+        display_products(sofas)
+    
+    with tab2:
+        tables = [p for p in filtered_products if p['category'] == 'tables']
+        display_products(tables)
+    
+    with tab3:
+        chairs = [p for p in filtered_products if p['category'] == 'chairs']
+        display_products(chairs)
+    
+    with tab4:
+        lighting = [p for p in filtered_products if p['category'] == 'lighting']
+        display_products(lighting)
+    
+    with tab5:
+        decor = [p for p in filtered_products if p['category'] == 'decor']
+        display_products(decor)
 
-    data = fetch_weather(lat, lon)
-
-    # UPDATED SECTION: Added 'if data and 'hourly' in data' to prevent the KeyError
-    if data and 'hourly' in data:
-        try:
-            h9, h3 = data['hourly']['relative_humidity_2m'][9], data['hourly']['relative_humidity_2m'][15]
-            p9, p3 = data['hourly']['surface_pressure'][9], data['hourly']['surface_pressure'][15]
-            c9, c3 = data['hourly']['cloudcover'][9]/12.5, data['hourly']['cloudcover'][15]/12.5
-            rain_now = data['current_weather'].get('rain', 0)
-            
-            loc_enc = label_encoder.transform([selected_city])[0]
-            input_data = np.array([[rain_now, h9, h3, p9, p3, c9, c3, loc_enc]])
-            prob = ai_model.predict_proba(input_data)[0][1]
-            prob = min(1.0, prob * 1.5) 
-
-            st.markdown(f"## 🛰️ Monitored Feed: {selected_city} - {st.session_state.page}")
-
-            if st.session_state.page == "Rain":
-                fig = px.area(x=list(range(24)), y=data['hourly']['relative_humidity_2m'][:24])
-                fig.update_traces(line_color='#add8e6') 
-                fig.update_layout(paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(255,255,255,0.1)', font_color="#fffdd0")
-                st.plotly_chart(fig, use_container_width=True)
-
-            elif st.session_state.page == "Flood":
-                fig = go.Figure(go.Indicator(mode="gauge+number", value=prob*100, gauge={'bar': {'color': "#add8e6"}}))
-                fig.update_layout(paper_bgcolor='rgba(0,0,0,0)', font_color="#fffdd0")
-                st.plotly_chart(fig, use_container_width=True)
-
-            elif st.session_state.page == "Satellite":
-                st.map(pd.DataFrame({'lat': [lat], 'lon': [lon]}))
-
-            elif st.session_state.page == "Economic":
-                dynamic_risk = [prob*90, prob*60, prob*75]
-                impact_df = pd.DataFrame({"Sector": ["Agri", "Urban", "Infra"], "Risk %": dynamic_risk})
-                fig = px.bar(impact_df, x="Sector", y="Risk %", color_discrete_sequence=['#add8e6'], range_y=[0, 100])
-                fig.update_layout(paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(255,255,255,0.1)', font_color="#fffdd0")
-                st.plotly_chart(fig, use_container_width=True)
-        except (KeyError, IndexError):
-            st.error("Live sensor data for this location is currently unavailable. Please try again or select a different city.")
+elif selected == "🛒 Cart":
+    st.header("🛒 Shopping Cart")
+    if not st.session_state.cart:
+        st.info("👋 Your cart is empty. Start shopping!")
     else:
-        st.warning("📡 Connecting to Satellite API... Please check your internet connection if this takes too long.")
+        display_cart()
+
+elif selected == "💳 Checkout":
+    st.header("💳 Secure Checkout")
+    if not st.session_state.cart:
+        st.warning("🛒 Add items to cart first!")
+    else:
+        st.success(f"**Order Total: ${st.session_state.total:,.2f}**")
+        st.button("✅ Complete Order", type="primary", on_click=complete_order)
+
+elif selected == "📊 Dashboard":
+    st.header("📊 Sales Dashboard")
+    show_dashboard()
+
+# Helper Functions
+def display_products(products_list):
+    for product in products_list:
+        with st.container():
+            col1, col2, col3 = st.columns([1, 3, 1])
+            with col1:
+                st.markdown(f"### {product['image']}")
+            with col2:
+                st.markdown(f"""
+                    <div class="product-card">
+                        <h3>{product['name']}</h3>
+                        <p><strong>In Stock:</strong> {product['stock']} units</p>
+                    </div>
+                """, unsafe_allow_html=True)
+            with col3:
+                st.markdown(f"""
+                    <div class="price-tag">${product['price']:,.2f}</div>
+                """, unsafe_allow_html=True)
+            
+            if st.button(f"🛒 Add to Cart", key=f"add_{product['id']}"):
+                add_to_cart(product)
+                st.rerun()
+
+def add_to_cart(product):
+    cart_item = next((item for item in st.session_state.cart if item['id'] == product['id']), None)
+    if cart_item:
+        cart_item['quantity'] += 1
+    else:
+        st.session_state.cart.append({'id': product['id'], **product, 'quantity': 1})
+    st.session_state.total = sum(item['price'] * item['quantity'] for item in st.session_state.cart)
+    st.success(f"✅ {product['name']} added to cart!")
+
+def display_cart():
+    for i, item in enumerate(st.session_state.cart):
+        col1, col2, col3, col4 = st.columns([2, 1, 1, 1])
+        with col1:
+            st.write(f"**{item['name']}**")
+        with col2:
+            st.write(f"Qty: {item['quantity']}")
+        with col3:
+            st.write(f"${item['price']:,.2f}")
+        with col4:
+            st.write(f"${(item['price'] * item['quantity']):,.2f}")
+            if st.button("❌", key=f"remove_{i}"):
+                st.session_state.cart.pop(i)
+                st.session_state.total = sum(item['price'] * item['quantity'] for item in st.session_state.cart)
+                st.rerun()
+
+def complete_order():
+    st.session_state.cart = []
+    st.session_state.total = 0
+    st.balloons()
+    st.success("🎉 Order placed successfully! Thank you for shopping with Luxury Interiors!")
+
+def show_dashboard():
+    df = pd.DataFrame(products)
+    fig = px.scatter(df, x='price', y='stock', size='price', 
+                    color='category', hover_name='name',
+                    title="Product Analytics")
+    st.plotly_chart(fig, use_container_width=True)
+    
+    col1, col2 = st.columns(2)
+    with col1:
+        fig_pie = px.pie(df, names='category', values='stock')
+        st.plotly_chart(fig_pie, use_container_width=True)
+    with col2:
+        fig_bar = px.bar(df, x='category', y='price', title="Avg Price by Category")
+        st.plotly_chart(fig_bar, use_container_width=True)
